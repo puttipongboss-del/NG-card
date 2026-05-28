@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>การ์ดส้ม — NG Record System</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --orange:#D85A30;--orange-light:#FAECE7;--orange-mid:#F5C4B3;--orange-dark:#712B13;
+  --green:#3B6D11;--green-light:#EAF3DE;--green-mid:#C0DD97;
+  --bg:#F8F7F4;--surface:#fff;--border:#E0DDD8;--text:#2C2C2A;--muted:#888780;
+  --radius:10px;--radius-lg:14px;
+}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+a{color:var(--orange);text-decoration:none}
+
+/* ===== TOP BAR ===== */
+.topbar{background:var(--orange);color:#fff;padding:0 20px;display:flex;align-items:center;gap:12px;height:52px;position:sticky;top:0;z-index:50;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.topbar-logo{font-size:18px;font-weight:700;letter-spacing:.5px}
+.topbar-sub{font-size:12px;opacity:.8;flex:1}
+.topbar-badge{background:rgba(255,255,255,.2);font-size:11px;padding:3px 10px;border-radius:99px}
+
+/* ===== TABS ===== */
+.tab-bar{display:flex;background:var(--surface);border-bottom:2px solid var(--orange);position:sticky;top:52px;z-index:40}
+.tab{flex:1;padding:11px 8px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px}
+.tab svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
+.tab.active{color:var(--orange);border-bottom-color:var(--orange);background:var(--orange-light)}
+.tab-content{display:none;padding:16px;max-width:680px;margin:0 auto}
+.tab-content.active{display:block}
+
+/* ===== SECTION HEADER ===== */
+.sec-head{display:flex;align-items:center;gap:10px;background:var(--orange);color:#fff;border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:12px 16px}
+.sec-head svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;flex-shrink:0}
+.sec-head-text h2{font-size:15px;font-weight:700;margin:0}
+.sec-head-text p{font-size:11px;opacity:.85;margin:2px 0 0}
+.sec-body{background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius-lg) var(--radius-lg);padding:16px;margin-bottom:20px}
+.sec-head.green{background:var(--green)}
+
+/* ===== FORM ===== */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.single{grid-template-columns:1fr}
+.form-row.triple{grid-template-columns:1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.form-group label .req{color:var(--orange)}
+input,select,textarea{font-family:'Sarabun',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--radius);padding:8px 11px;background:var(--surface);color:var(--text);width:100%;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--orange)}
+textarea{resize:vertical;min-height:64px}
+input[readonly]{background:#F1EFE8;color:var(--muted)}
+
+/* ===== DWG LOOKUP ===== */
+.dwg-row{display:flex;gap:8px;align-items:flex-end}
+.dwg-row input{flex:1}
+.btn-lookup{padding:8px 14px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;transition:opacity .2s}
+.btn-lookup:hover{opacity:.88}
+.btn-lookup svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5}
+.lookup-status{font-size:11px;margin-top:4px;height:14px}
+.lookup-ok{color:var(--green)}
+.lookup-err{color:#E24B4A}
+.lookup-loading{color:var(--muted)}
+
+/* ===== SECTION DIVIDER ===== */
+.divider{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.divider svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ===== DEFECT CHECKBOXES ===== */
+.defect-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px}
+.defect-item{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:#FAFAF8;transition:all .15s;user-select:none}
+.defect-item input[type=checkbox]{accent-color:var(--orange);width:15px;height:15px;flex-shrink:0}
+.defect-item.checked{background:var(--orange-light);border-color:var(--orange-mid);color:var(--orange-dark);font-weight:600}
+
+/* ===== PHOTO UPLOAD ===== */
+.photo-zone{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:20px;text-align:center;cursor:pointer;background:#FAFAF8;transition:all .2s;position:relative}
+.photo-zone:hover{border-color:var(--orange);background:var(--orange-light)}
+.photo-zone svg{width:32px;height:32px;stroke:var(--muted);fill:none;stroke-width:1.5;display:block;margin:0 auto 8px}
+.photo-zone p{font-size:13px;color:var(--muted)}
+.photo-zone p span{color:var(--orange);font-weight:600}
+.photo-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.photo-previews{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.photo-thumb{position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover}
+.photo-thumb .del-btn{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
+.photo-thumb .upload-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:600}
+.photo-thumb .upload-ok{position:absolute;inset:0;background:rgba(59,109,17,.5);display:flex;align-items:center;justify-content:center}
+
+/* ===== SUBMIT BUTTON ===== */
+.btn-submit{width:100%;padding:12px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;cursor:pointer;margin-top:16px;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .2s}
+.btn-submit:hover{opacity:.88}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed}
+.btn-submit svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5}
+.btn-submit.green{background:var(--green)}
+
+/* ===== CARD LIST ===== */
+.counter-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.counter{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px;text-align:center}
+.counter .num{font-size:24px;font-weight:700}
+.counter .lbl{font-size:11px;color:var(--muted);margin-top:2px}
+.counter.orange .num{color:var(--orange)}
+.counter.green .num{color:var(--green)}
+
+.ng-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px}
+.ng-card-top{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--orange-light);border-bottom:1px solid var(--orange-mid)}
+.ng-card-id{font-size:10px;color:var(--orange-dark);font-weight:700;background:var(--orange-mid);padding:2px 7px;border-radius:99px}
+.ng-card-title{font-size:13px;font-weight:700;flex:1}
+.ng-card-date{font-size:11px;color:var(--muted)}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;font-weight:700}
+.badge.pending{background:#FAECE7;color:var(--orange-dark)}
+.badge.done{background:var(--green-light);color:var(--green)}
+.ng-card-body{padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;font-size:12px;color:var(--muted)}
+.ng-card-body span{color:var(--text);font-weight:600}
+.ng-card-photos{padding:0 14px 8px;display:flex;gap:6px;flex-wrap:wrap}
+.ng-card-photos a img{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--border)}
+.ng-card-actions{padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:7px}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:8px;cursor:pointer;border:1px solid;font-weight:600;display:flex;align-items:center;gap:4px;transition:opacity .2s}
+.btn-sm:hover{opacity:.8}
+.btn-sm svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
+.btn-reply{border-color:var(--green);color:var(--green);background:var(--green-light)}
+.btn-view{border-color:var(--border);color:var(--muted);background:#FAFAF8}
+.empty{text-align:center;padding:36px;color:var(--muted)}
+.empty svg{width:40px;height:40px;stroke:var(--muted);fill:none;stroke-width:1.5;display:block;margin:0 auto 10px}
+
+/* ===== MODAL ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-lg);width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:10}
+.modal-head h3{font-size:14px;font-weight:700}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--muted);width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .2s}
+.modal-close:hover{background:var(--bg)}
+.modal-close svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.modal-body{padding:16px}
+.detail-section{margin-bottom:14px}
+.detail-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.detail-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+.detail-label{color:var(--muted)}
+.detail-val{font-weight:600;text-align:right;max-width:65%;word-break:break-word}
+.detail-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.detail-photos a img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+.status-band{padding:7px 16px;font-size:12px;font-weight:700;text-align:center;letter-spacing:.3px}
+.status-band.pending{background:var(--orange-light);color:var(--orange-dark)}
+.status-band.done{background:var(--green-light);color:var(--green)}
+
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:#2C2C2A;color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--green)}
+.toast.error{background:#A32D2D}
+
+/* ===== CONFIG BANNER ===== */
+.config-banner{background:#FFF3D0;border:1px solid #FAC775;border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;font-size:12px;color:#633806;line-height:1.6}
+.config-banner strong{display:block;margin-bottom:4px;font-size:13px}
+.config-banner code{background:#FAC775;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:11px}
+
+@media(max-width:480px){
+  .form-row{grid-template-columns:1fr}
+  .form-row.triple{grid-template-columns:1fr 1fr}
+  .tab span{display:none}
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-logo">🟠 การ์ดส้ม</div>
+  </div>
+  <div class="topbar-sub">NG Record System</div>
+  <div class="topbar-badge" id="version-badge">v2.0</div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('qc')" id="tab-btn-qc">
+    <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    <span>QC ออกการ์ด</span>
+  </button>
+  <button class="tab" onclick="switchTab('prod')" id="tab-btn-prod">
+    <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+    <span>Production ตอบกลับ</span>
+  </button>
+  <button class="tab" onclick="switchTab('history')" id="tab-btn-history">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span>ประวัติ</span>
+  </button>
+</div>
+
+<!-- ========== QC TAB ========== -->
+<div id="tab-qc" class="tab-content active">
+
+  <div class="config-banner" id="config-banner">
+    <strong>⚙️ ตั้งค่า Apps Script URL ก่อนใช้งาน</strong>
+    เปิดไฟล์นี้แล้วแก้ไขตัวแปร <code>APPS_SCRIPT_URL</code> ในส่วน &lt;script&gt; ด้านล่าง
+    ให้ใส่ URL ของ Google Apps Script Web App ที่ deploy แล้ว
+  </div>
+
+  <div class="sec-head">
+    <svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    <div class="sec-head-text">
+      <h2>ใบบันทึกของเสีย (การ์ดส้ม)</h2>
+      <p>QC กรอกข้อมูลและส่งให้ Production</p>
+    </div>
+  </div>
+  <div class="sec-body">
+
+    <!-- DWG LOOKUP -->
+    <div class="divider">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      ค้นหาจาก DWG No.
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>DWG No. <span class="req">*</span></label>
+      <div class="dwg-row">
+        <input type="text" id="q-dwg" placeholder="เช่น DWG-001" oninput="clearLookup()">
+        <button class="btn-lookup" onclick="lookupDWG()">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          ค้นหา
+        </button>
+      </div>
+      <div class="lookup-status" id="lookup-status"></div>
+    </div>
+
+    <!-- AUTO-FILLED FIELDS -->
+    <div class="form-row">
+      <div class="form-group">
+        <label>Part Name</label>
+        <input type="text" id="q-partname" placeholder="— ดึงจาก DWG อัตโนมัติ —" readonly>
+      </div>
+      <div class="form-group">
+        <label>Model</label>
+        <input type="text" id="q-model" placeholder="— ดึงจาก DWG อัตโนมัติ —" readonly>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Color</label>
+        <input type="text" id="q-color" placeholder="สี">
+      </div>
+      <div class="form-group">
+        <label>จำนวน NG (ชิ้น) <span class="req">*</span></label>
+        <input type="number" id="q-qty" placeholder="0" min="0">
+      </div>
+    </div>
+
+    <div class="divider">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      ผู้เกี่ยวข้อง
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>ผู้ตรวจสอบ (QC) <span class="req">*</span></label>
+        <input type="text" id="q-inspector" placeholder="ชื่อผู้ตรวจ">
+      </div>
+      <div class="form-group">
+        <label>ผู้รับแจ้ง (Production)</label>
+        <input type="text" id="q-receiver" placeholder="ชื่อผู้รับ">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>พนักงานหน้าเครื่อง</label>
+        <input type="text" id="q-operator" placeholder="ชื่อพนักงาน">
+      </div>
+      <div class="form-group">
+        <label>วันที่ <span class="req">*</span></label>
+        <input type="date" id="q-date">
+      </div>
+    </div>
+    <div class="form-row single">
+      <div class="form-group">
+        <label>เวลา</label>
+        <input type="time" id="q-time">
+      </div>
+    </div>
+
+    <div class="form-row single">
+      <div class="form-group">
+        <label>ปัญหา / อาการของเสีย</label>
+        <textarea id="q-issue" placeholder="อธิบายปัญหา..."></textarea>
+      </div>
+    </div>
+
+    <div class="divider">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      ลักษณะของเสีย (เลือกได้หลายข้อ)
+    </div>
+    <div class="defect-grid" id="defect-grid">
+      <label class="defect-item"><input type="checkbox" value="รอยตัดแยก"> รอยตัดแยก</label>
+      <label class="defect-item"><input type="checkbox" value="รอยขีดครูด"> รอยขีดครูด</label>
+      <label class="defect-item"><input type="checkbox" value="รอยตัดแต่ง"> รอยตัดแต่ง</label>
+      <label class="defect-item"><input type="checkbox" value="รอยปลดร้อน"> รอยปลดร้อน</label>
+      <label class="defect-item"><input type="checkbox" value="รอยขีดเงา"> รอยขีดเงา</label>
+      <label class="defect-item"><input type="checkbox" value="รอยแก้ไข Dimension"> รอยแก้ไข Dimension</label>
+      <label class="defect-item"><input type="checkbox" value="อื่นๆ"> อื่นๆ</label>
+    </div>
+
+    <div class="divider">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      รูปภาพชิ้นงาน NG
+    </div>
+    <div class="photo-zone" id="photo-zone">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <p>แตะหรือลากรูปมาวาง<br><span>เลือกรูป</span> — รองรับ JPG, PNG (สูงสุด 5 รูป)</p>
+      <input type="file" accept="image/*" multiple id="photo-input" onchange="handlePhotos(this)">
+    </div>
+    <div class="photo-previews" id="photo-previews"></div>
+
+    <button class="btn-submit" onclick="submitQC()" id="btn-qc-submit">
+      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      ออกการ์ดส้ม
+    </button>
+  </div>
+</div>
+
+<!-- ========== PRODUCTION TAB ========== -->
+<div id="tab-prod" class="tab-content">
+  <div class="sec-head green">
+    <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+    <div class="sec-head-text">
+      <h2>Production ตอบกลับ</h2>
+      <p>การ์ดที่รอการแก้ไข</p>
+    </div>
+  </div>
+  <div class="sec-body" style="padding:12px">
+    <div id="pending-list"></div>
+  </div>
+</div>
+
+<!-- ========== HISTORY TAB ========== -->
+<div id="tab-history" class="tab-content">
+  <div class="counter-row">
+    <div class="counter orange"><div class="num" id="cnt-total">0</div><div class="lbl">การ์ดทั้งหมด</div></div>
+    <div class="counter orange"><div class="num" id="cnt-pending">0</div><div class="lbl">รอตอบกลับ</div></div>
+    <div class="counter green"><div class="num" id="cnt-done">0</div><div class="lbl">แก้ไขแล้ว</div></div>
+  </div>
+  <div id="history-list"></div>
+</div>
+
+<!-- ========== REPLY MODAL ========== -->
+<div class="modal-overlay" id="reply-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>🔧 Production ตอบกลับ</h3>
+      <button class="modal-close" onclick="closeModal('reply-modal')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="reply-card-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>ผู้แก้ไขชิ้นงาน <span class="req">*</span></label>
+          <input type="text" id="r-fixer" placeholder="ชื่อผู้แก้ไข">
+        </div>
+        <div class="form-group">
+          <label>วันที่แก้ไข</label>
+          <input type="date" id="r-date">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>คัดแยก/แก้ไข OK (ชิ้น)</label>
+          <input type="number" id="r-ok" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>คัดแยก/แก้ไข NG (ชิ้น)</label>
+          <input type="number" id="r-ng" placeholder="0" min="0">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>สาเหตุการเกิด</label>
+          <textarea id="r-cause" placeholder="ระบุสาเหตุ..."></textarea>
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>การป้องกัน</label>
+          <textarea id="r-prevent" placeholder="มาตรการป้องกัน..."></textarea>
+        </div>
+      </div>
+      <div class="divider">ผลการตรวจซ้ำ</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ผู้ตรวจสอบซ้ำ (QC)</label>
+          <input type="text" id="r-recheck" placeholder="ชื่อผู้ตรวจ">
+        </div>
+        <div class="form-group">
+          <label>วันที่ตรวจซ้ำ</label>
+          <input type="date" id="r-recheck-date">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ตรวจซ้ำ OK (ชิ้น)</label>
+          <input type="number" id="r-recheck-ok" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>ตรวจซ้ำ NG (ชิ้น)</label>
+          <input type="number" id="r-recheck-ng" placeholder="0" min="0">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>ผู้อนุมัติตรวจสอบซ้ำ</label>
+          <input type="text" id="r-approver" placeholder="ชื่อผู้อนุมัติ">
+        </div>
+      </div>
+      <button class="btn-submit green" onclick="submitReply()" id="btn-reply-submit">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        บันทึกการแก้ไข
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== VIEW MODAL ========== -->
+<div class="modal-overlay" id="view-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="view-title">รายละเอียดการ์ดส้ม</h3>
+      <button class="modal-close" onclick="closeModal('view-modal')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="view-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// 🔧 CONFIG — ใส่ URL Apps Script ที่ deploy แล้ว
+// ============================================================
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+// ============================================================
+
+let cards = JSON.parse(localStorage.getItem('ng_cards_v2') || '[]');
+let pendingPhotos = []; // [{file, previewUrl, driveUrl}]
+
+// ---------- INIT ----------
+document.getElementById('q-date').value = today();
+document.getElementById('q-time').value = nowTime();
+if (APPS_SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
+  document.getElementById('config-banner').style.display = 'block';
+} else {
+  document.getElementById('config-banner').style.display = 'none';
+}
+
+document.addEventListener('change', e => {
+  const lbl = e.target.closest('.defect-item');
+  if (lbl) lbl.classList.toggle('checked', e.target.checked);
+});
+
+// ---------- UTILS ----------
+function today() { return new Date().toISOString().slice(0, 10); }
+function nowTime() { return new Date().toTimeString().slice(0, 5); }
+function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function save() { try { localStorage.setItem('ng_cards_v2', JSON.stringify(cards)); } catch(e) {} }
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ---------- TABS ----------
+function switchTab(t) {
+  document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-btn-' + t).classList.add('active');
+  document.getElementById('tab-' + t).classList.add('active');
+  if (t === 'prod') renderPending();
+  if (t === 'history') renderHistory();
+}
+
+// ---------- DWG LOOKUP ----------
+function clearLookup() {
+  document.getElementById('lookup-status').textContent = '';
+  document.getElementById('q-partname').value = '';
+  document.getElementById('q-model').value = '';
+}
+
+async function lookupDWG() {
+  const dwg = val('q-dwg');
+  if (!dwg) { showToast('กรุณากรอก DWG No.', 'error'); return; }
+  const status = document.getElementById('lookup-status');
+  status.className = 'lookup-status lookup-loading';
+  status.textContent = '⏳ กำลังค้นหา...';
+  try {
+    const url = APPS_SCRIPT_URL + '?action=lookupDWG&dwg=' + encodeURIComponent(dwg);
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.found) {
+      document.getElementById('q-partname').value = data.partName || '';
+      document.getElementById('q-model').value = data.model || '';
+      status.className = 'lookup-status lookup-ok';
+      status.textContent = '✅ พบข้อมูล: ' + data.partName + ' | ' + data.model;
+    } else {
+      status.className = 'lookup-status lookup-err';
+      status.textContent = '❌ ไม่พบ DWG No. นี้ใน Database';
+    }
+  } catch(e) {
+    status.className = 'lookup-status lookup-err';
+    status.textContent = '⚠️ เชื่อมต่อ Server ไม่ได้ — ตรวจสอบ URL';
+  }
+}
+
+// ---------- PHOTO HANDLING ----------
+function handlePhotos(input) {
+  const files = Array.from(input.files);
+  const remaining = 5 - pendingPhotos.length;
+  if (files.length > remaining) {
+    showToast('เพิ่มได้อีก ' + remaining + ' รูป (สูงสุด 5)', 'error');
+  }
+  files.slice(0, remaining).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      pendingPhotos.push({ file, previewUrl: e.target.result, driveUrl: null, uploading: false });
+      renderPreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function removePhoto(idx) {
+  pendingPhotos.splice(idx, 1);
+  renderPreviews();
+}
+
+function renderPreviews() {
+  const container = document.getElementById('photo-previews');
+  container.innerHTML = pendingPhotos.map((p, i) => `
+    <div class="photo-thumb">
+      <img src="${p.previewUrl}" alt="รูป ${i+1}">
+      ${p.uploading ? '<div class="upload-overlay">⬆️</div>' : ''}
+      ${p.driveUrl ? '<div class="upload-ok">✅</div>' : ''}
+      ${!p.uploading ? `<button class="del-btn" onclick="removePhoto(${i})">✕</button>` : ''}
+    </div>
+  `).join('');
+}
+
+async function uploadPhotosToDrive(cardId) {
+  const results = [];
+  for (let i = 0; i < pendingPhotos.length; i++) {
+    const p = pendingPhotos[i];
+    pendingPhotos[i].uploading = true;
+    renderPreviews();
+    try {
+      // Convert to base64
+      const base64 = p.previewUrl.split(',')[1];
+      const mimeType = p.file.type;
+      const fileName = cardId + '_photo' + (i + 1) + '.' + p.file.name.split('.').pop();
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'uploadPhoto', fileName, base64, mimeType, cardId })
+      });
+      const data = await res.json();
+      if (data.url) {
+        pendingPhotos[i].driveUrl = data.url;
+        results.push(data.url);
+      }
+    } catch(e) {
+      console.error('Upload error', e);
+    }
+    pendingPhotos[i].uploading = false;
+    renderPreviews();
+  }
+  return results;
+}
+
+// ---------- SUBMIT QC ----------
+async function submitQC() {
+  const dwg = val('q-dwg'), qty = val('q-qty'), inspector = val('q-inspector');
+  if (!dwg || !qty || !inspector) {
+    showToast('กรุณากรอก DWG No., จำนวน และผู้ตรวจสอบ', 'error'); return;
+  }
+  const btn = document.getElementById('btn-qc-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> กำลังบันทึก...';
+
+  const cardId = 'NG-' + Date.now();
+  const defects = Array.from(document.querySelectorAll('#defect-grid input:checked')).map(i => i.value);
+
+  // Upload photos first
+  let photoUrls = [];
+  if (pendingPhotos.length > 0) {
+    showToast('⬆️ กำลังอัปโหลดรูปภาพ...');
+    photoUrls = await uploadPhotosToDrive(cardId);
+  }
+
+  const card = {
+    id: cardId,
+    dwg: dwg,
+    partname: val('q-partname') || dwg,
+    model: val('q-model'),
+    color: val('q-color'),
+    qty: parseInt(qty) || 0,
+    inspector,
+    date: val('q-date'),
+    time: val('q-time'),
+    receiver: val('q-receiver'),
+    operator: val('q-operator'),
+    issue: val('q-issue'),
+    defects,
+    photoUrls,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    reply: null
+  };
+
+  // Save to Apps Script (Google Sheets)
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveCard', card })
+    });
+  } catch(e) { console.warn('Server save failed, using local only'); }
+
+  cards.unshift(card);
+  save();
+  showToast('✅ ออกการ์ดส้ม ' + cardId + ' สำเร็จ!', 'success');
+
+  // Reset form
+  ['q-dwg','q-partname','q-model','q-color','q-qty','q-receiver','q-operator','q-issue'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.querySelectorAll('#defect-grid input').forEach(el => el.checked = false);
+  document.querySelectorAll('#defect-grid label').forEach(el => el.classList.remove('checked'));
+  document.getElementById('lookup-status').textContent = '';
+  pendingPhotos = [];
+  renderPreviews();
+  document.getElementById('q-date').value = today();
+  document.getElementById('q-time').value = nowTime();
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> ออกการ์ดส้ม';
+}
+
+// ---------- RENDER CARDS ----------
+function cardHTML(c, showReply) {
+  const defStr = c.defects && c.defects.length ? c.defects.join(', ') : '-';
+  const badge = c.status === 'replied'
+    ? '<span class="badge done">✅ แก้ไขแล้ว</span>'
+    : '<span class="badge pending">⏳ รอตอบกลับ</span>';
+  const photos = (c.photoUrls && c.photoUrls.length)
+    ? `<div class="ng-card-photos">${c.photoUrls.map(u => `<a href="${u}" target="_blank"><img src="${u}" alt="รูป NG" onerror="this.style.display='none'"></a>`).join('')}</div>`
+    : '';
+  return `
+    <div class="ng-card">
+      <div class="ng-card-top">
+        <span class="ng-card-id">${c.id}</span>
+        <span class="ng-card-title">${c.partname}${c.model ? ' / ' + c.model : ''}</span>
+        ${badge}
+      </div>
+      <div class="ng-card-body">
+        <div>DWG: <span>${c.dwg || '-'}</span></div>
+        <div>จำนวน NG: <span>${c.qty} ชิ้น</span></div>
+        <div>QC: <span>${c.inspector}</span></div>
+        <div>วันที่: <span>${c.date}</span></div>
+        ${c.defects && c.defects.length ? `<div style="grid-column:1/-1">ลักษณะ: <span>${defStr}</span></div>` : ''}
+      </div>
+      ${photos}
+      <div class="ng-card-actions">
+        <button class="btn-sm btn-view" onclick="viewCard('${c.id}')">
+          <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          ดูรายละเอียด
+        </button>
+        ${showReply && c.status === 'pending' ? `
+          <button class="btn-sm btn-reply" onclick="openReply('${c.id}')">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            ตอบกลับ
+          </button>` : ''}
+      </div>
+    </div>`;
+}
+
+function renderPending() {
+  const pending = cards.filter(c => c.status === 'pending');
+  const el = document.getElementById('pending-list');
+  if (!pending.length) {
+    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>ไม่มีการ์ดที่รอตอบกลับ</div>';
+    return;
+  }
+  el.innerHTML = pending.map(c => cardHTML(c, true)).join('');
+}
+
+function renderHistory() {
+  document.getElementById('cnt-total').textContent = cards.length;
+  document.getElementById('cnt-pending').textContent = cards.filter(c => c.status === 'pending').length;
+  document.getElementById('cnt-done').textContent = cards.filter(c => c.status === 'replied').length;
+  const el = document.getElementById('history-list');
+  if (!cards.length) {
+    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>ยังไม่มีการ์ดส้ม</div>';
+    return;
+  }
+  el.innerHTML = cards.map(c => cardHTML(c, false)).join('');
+}
+
+// ---------- REPLY ----------
+function openReply(id) {
+  document.getElementById('reply-card-id').value = id;
+  document.getElementById('r-date').value = today();
+  document.getElementById('r-recheck-date').value = today();
+  ['r-fixer','r-ok','r-ng','r-cause','r-prevent','r-recheck','r-recheck-ok','r-recheck-ng','r-approver'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('reply-modal').classList.add('open');
+}
+
+async function submitReply() {
+  const id = document.getElementById('reply-card-id').value;
+  const fixer = val('r-fixer');
+  if (!fixer) { showToast('กรุณากรอกชื่อผู้แก้ไข', 'error'); return; }
+  const card = cards.find(c => c.id === id);
+  if (!card) return;
+  const btn = document.getElementById('btn-reply-submit');
+  btn.disabled = true;
+
+  card.reply = {
+    fixer, date: val('r-date'),
+    ok: parseInt(val('r-ok')) || 0,
+    ng: parseInt(val('r-ng')) || 0,
+    cause: val('r-cause'),
+    prevent: val('r-prevent'),
+    recheckBy: val('r-recheck'),
+    recheckDate: val('r-recheck-date'),
+    recheckOk: parseInt(val('r-recheck-ok')) || 0,
+    recheckNg: parseInt(val('r-recheck-ng')) || 0,
+    approver: val('r-approver')
+  };
+  card.status = 'replied';
+
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'updateReply', cardId: id, reply: card.reply })
+    });
+  } catch(e) {}
+
+  save();
+  closeModal('reply-modal');
+  showToast('✅ บันทึกการตอบกลับสำเร็จ!', 'success');
+  renderPending();
+  btn.disabled = false;
+}
+
+// ---------- VIEW CARD ----------
+function viewCard(id) {
+  const c = cards.find(x => x.id === id);
+  if (!c) return;
+  const defStr = c.defects && c.defects.length ? c.defects.join(', ') : '-';
+  const rows1 = [
+    ['รหัสการ์ด', c.id], ['DWG No.', c.dwg || '-'],
+    ['Part Name', c.partname], ['Model', c.model || '-'],
+    ['Color', c.color || '-'], ['จำนวน NG', c.qty + ' ชิ้น'],
+    ['ผู้ตรวจสอบ', c.inspector], ['วันที่/เวลา', c.date + ' ' + (c.time || '')],
+    ['ผู้รับแจ้ง', c.receiver || '-'], ['พนักงานหน้าเครื่อง', c.operator || '-'],
+    ['ปัญหา', c.issue || '-'], ['ลักษณะของเสีย', defStr]
+  ];
+  let html = `<div class="status-band ${c.status === 'replied' ? 'done' : 'pending'}">${c.status === 'replied' ? '✅ แก้ไขแล้ว' : '⏳ รอตอบกลับ'}</div>`;
+  html += `<div class="modal-body"><div class="detail-section"><div class="detail-section-title">ส่วนที่ 1 — การตรวจสอบ (QC)</div>`;
+  html += rows1.map(([l,v]) => `<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`).join('');
+  if (c.photoUrls && c.photoUrls.length) {
+    html += `<div class="detail-row"><span class="detail-label">รูปภาพ</span></div>`;
+    html += `<div class="detail-photos">${c.photoUrls.map(u => `<a href="${u}" target="_blank"><img src="${u}" alt="NG" onerror="this.style.display='none'"></a>`).join('')}</div>`;
+  }
+  html += '</div>';
+  if (c.reply) {
+    const r = c.reply;
+    const rows2 = [
+      ['ผู้แก้ไข', r.fixer || '-'], ['วันที่แก้ไข', r.date || '-'],
+      ['คัดแยก/แก้ไข OK', r.ok + ' ชิ้น'], ['คัดแยก/แก้ไข NG', r.ng + ' ชิ้น'],
+      ['สาเหตุ', r.cause || '-'], ['การป้องกัน', r.prevent || '-'],
+      ['ผู้ตรวจซ้ำ', r.recheckBy || '-'], ['วันที่ตรวจซ้ำ', r.recheckDate || '-'],
+      ['ตรวจซ้ำ OK', r.recheckOk + ' ชิ้น'], ['ตรวจซ้ำ NG', r.recheckNg + ' ชิ้น'],
+      ['ผู้อนุมัติ', r.approver || '-']
+    ];
+    html += `<div class="detail-section"><div class="detail-section-title" style="color:var(--green)">ส่วนที่ 2 — การแก้ไข (Production)</div>`;
+    html += rows2.map(([l,v]) => `<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`).join('');
+    html += '</div>';
+  }
+  html += '</div>';
+  document.getElementById('view-title').textContent = 'การ์ดส้ม ' + c.id;
+  document.getElementById('view-body').innerHTML = html;
+  document.getElementById('view-modal').classList.add('open');
+}
+
+// ---------- MODAL ----------
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
