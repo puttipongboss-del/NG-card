@@ -48,6 +48,7 @@ input,select,textarea{font-family:'Sarabun',sans-serif;font-size:13px;border:1px
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--orange)}
 textarea{resize:vertical;min-height:64px}
 input[readonly]{background:#F1EFE8;color:var(--muted)}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888780' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
 
 /* ===== DWG LOOKUP ===== */
 .dwg-row{display:flex;gap:8px;align-items:flex-end}
@@ -99,6 +100,14 @@ input[readonly]{background:#F1EFE8;color:var(--muted)}
 .counter.orange .num{color:var(--orange)}
 .counter.green .num{color:var(--green)}
 
+/* ===== HISTORY FILTERS ===== */
+.filter-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.filter-row select{flex:1;min-width:120px;font-size:12px;padding:6px 10px}
+.filter-row input[type=text]{flex:1;min-width:120px;font-size:12px;padding:6px 10px}
+.btn-refresh{padding:6px 12px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.btn-refresh svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2}
+.btn-refresh:disabled{opacity:.5;cursor:not-allowed}
+
 .ng-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px}
 .ng-card-top{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--orange-light);border-bottom:1px solid var(--orange-mid)}
 .ng-card-id{font-size:10px;color:var(--orange-dark);font-weight:700;background:var(--orange-mid);padding:2px 7px;border-radius:99px}
@@ -119,6 +128,12 @@ input[readonly]{background:#F1EFE8;color:var(--muted)}
 .btn-view{border-color:var(--border);color:var(--muted);background:#FAFAF8}
 .empty{text-align:center;padding:36px;color:var(--muted)}
 .empty svg{width:40px;height:40px;stroke:var(--muted);fill:none;stroke-width:1.5;display:block;margin:0 auto 10px}
+
+/* ===== LOADING SPINNER ===== */
+.loading-spin{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-overlay{text-align:center;padding:40px;color:var(--muted)}
+.load-overlay .loading-spin{border-color:rgba(216,90,48,.3);border-top-color:var(--orange);width:28px;height:28px}
 
 /* ===== MODAL ===== */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
@@ -167,7 +182,7 @@ input[readonly]{background:#F1EFE8;color:var(--muted)}
     <div class="topbar-logo">🟠 การ์ดส้ม</div>
   </div>
   <div class="topbar-sub">NG Record System</div>
-  <div class="topbar-badge" id="version-badge">v2.0</div>
+  <div class="topbar-badge">v3.0</div>
 </div>
 
 <div class="tab-bar">
@@ -188,10 +203,9 @@ input[readonly]{background:#F1EFE8;color:var(--muted)}
 <!-- ========== QC TAB ========== -->
 <div id="tab-qc" class="tab-content active">
 
-  <div class="config-banner" id="config-banner">
+  <div class="config-banner" id="config-banner" style="display:none">
     <strong>⚙️ ตั้งค่า Apps Script URL ก่อนใช้งาน</strong>
-    เปิดไฟล์นี้แล้วแก้ไขตัวแปร <code>APPS_SCRIPT_URL</code> ในส่วน &lt;script&gt; ด้านล่าง
-    ให้ใส่ URL ของ Google Apps Script Web App ที่ deploy แล้ว
+    แก้ไขตัวแปร <code>APPS_SCRIPT_URL</code> ในส่วน &lt;script&gt;
   </div>
 
   <div class="sec-head">
@@ -243,6 +257,16 @@ input[readonly]{background:#F1EFE8;color:var(--muted)}
       </div>
     </div>
 
+    <!-- MACHINE -->
+    <div class="form-row single">
+      <div class="form-group">
+        <label>Machine <span class="req">*</span></label>
+        <select id="q-machine">
+          <option value="">— เลือก Machine —</option>
+        </select>
+      </div>
+    </div>
+
     <div class="divider">
       <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       ผู้เกี่ยวข้อง
@@ -251,17 +275,23 @@ input[readonly]{background:#F1EFE8;color:var(--muted)}
     <div class="form-row">
       <div class="form-group">
         <label>ผู้ตรวจสอบ (QC) <span class="req">*</span></label>
-        <input type="text" id="q-inspector" placeholder="ชื่อผู้ตรวจ">
+        <select id="q-inspector">
+          <option value="">— เลือกผู้ตรวจสอบ —</option>
+        </select>
       </div>
       <div class="form-group">
         <label>ผู้รับแจ้ง (Production)</label>
-        <input type="text" id="q-receiver" placeholder="ชื่อผู้รับ">
+        <select id="q-receiver">
+          <option value="">— เลือกผู้รับแจ้ง —</option>
+        </select>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label>พนักงานหน้าเครื่อง</label>
-        <input type="text" id="q-operator" placeholder="ชื่อพนักงาน">
+        <select id="q-operator">
+          <option value="">— เลือกพนักงาน —</option>
+        </select>
       </div>
       <div class="form-group">
         <label>วันที่ <span class="req">*</span></label>
@@ -287,12 +317,17 @@ input[readonly]{background:#F1EFE8;color:var(--muted)}
       ลักษณะของเสีย (เลือกได้หลายข้อ)
     </div>
     <div class="defect-grid" id="defect-grid">
-      <label class="defect-item"><input type="checkbox" value="รอยตัดแยก"> รอยตัดแยก</label>
-      <label class="defect-item"><input type="checkbox" value="รอยขีดครูด"> รอยขีดครูด</label>
-      <label class="defect-item"><input type="checkbox" value="รอยตัดแต่ง"> รอยตัดแต่ง</label>
-      <label class="defect-item"><input type="checkbox" value="รอยปลดร้อน"> รอยปลดร้อน</label>
-      <label class="defect-item"><input type="checkbox" value="รอยขีดเงา"> รอยขีดเงา</label>
-      <label class="defect-item"><input type="checkbox" value="รอยแก้ไข Dimension"> รอยแก้ไข Dimension</label>
+      <label class="defect-item"><input type="checkbox" value="ชิ้นงานไม่เต็มพิมพ์"> ชิ้นงานไม่เต็มพิมพ์</label>
+      <label class="defect-item"><input type="checkbox" value="ชิ้นงานเกิดรอยยุบ"> ชิ้นงานเกิดรอยยุบ</label>
+      <label class="defect-item"><input type="checkbox" value="รอยไหม้"> รอยไหม้</label>
+      <label class="defect-item"><input type="checkbox" value="ครีบหรือรอยส่วนเกิน "> ครีบหรือรอยส่วนเกิน </label>
+      <label class="defect-item"><input type="checkbox" value="โพรงอากาศ "> โพรงอากาศ </label>
+      <label class="defect-item"><input type="checkbox" value="รอยแนวประสาน(รอยต่อ)"> รอยแนวประสาน(รอยต่อ)</label>
+      <label class="defect-item"><input type="checkbox" value="รอยเส้นการไหล"> รอยเส้นการไหล</label>
+      <label class="defect-item"><input type="checkbox" value="การบิดงอ"> การบิดงอ</label>
+      <label class="defect-item"><input type="checkbox" value="งานแตก"> งานแตก</label>
+      <label class="defect-item"><input type="checkbox" value="dimension ไม่ได้"> dimension ไม่ได้</label>
+
       <label class="defect-item"><input type="checkbox" value="อื่นๆ"> อื่นๆ</label>
     </div>
 
@@ -335,6 +370,21 @@ input[readonly]{background:#F1EFE8;color:var(--muted)}
     <div class="counter orange"><div class="num" id="cnt-pending">0</div><div class="lbl">รอตอบกลับ</div></div>
     <div class="counter green"><div class="num" id="cnt-done">0</div><div class="lbl">แก้ไขแล้ว</div></div>
   </div>
+
+  <!-- FILTERS -->
+  <div class="filter-row">
+    <input type="text" id="h-search" placeholder="🔍 ค้นหา DWG / Part / Machine..." oninput="applyFilters()">
+    <select id="h-status" onchange="applyFilters()">
+      <option value="">สถานะทั้งหมด</option>
+      <option value="pending">⏳ รอตอบกลับ</option>
+      <option value="replied">✅ แก้ไขแล้ว</option>
+    </select>
+    <button class="btn-refresh" onclick="loadCards()" id="btn-refresh">
+      <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+      โหลดใหม่
+    </button>
+  </div>
+
   <div id="history-list"></div>
 </div>
 
@@ -438,16 +488,16 @@ input[readonly]{background:#F1EFE8;color:var(--muted)}
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwSNRjRPDI2bfVOkWH8Z2wiTb2l78ZKFctJkLfs8XMs6FLLe45vFsW0JJ0J36nCpq0/exec';
 // ============================================================
 
-let cards = JSON.parse(localStorage.getItem('ng_cards_v2') || '[]');
-let pendingPhotos = []; // [{file, previewUrl, driveUrl}]
+let cards = [];           // loaded from Sheets
+let allCards = [];        // unfiltered
+let pendingPhotos = [];   // [{file, previewUrl, driveUrl}]
+let dropdownsLoaded = false;
 
 // ---------- INIT ----------
 document.getElementById('q-date').value = today();
 document.getElementById('q-time').value = nowTime();
 if (APPS_SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
   document.getElementById('config-banner').style.display = 'block';
-} else {
-  document.getElementById('config-banner').style.display = 'none';
 }
 
 document.addEventListener('change', e => {
@@ -455,17 +505,20 @@ document.addEventListener('change', e => {
   if (lbl) lbl.classList.toggle('checked', e.target.checked);
 });
 
+// Load dropdowns on page start
+loadDropdowns();
+
 // ---------- UTILS ----------
 function today() { return new Date().toISOString().slice(0, 10); }
 function nowTime() { return new Date().toTimeString().slice(0, 5); }
 function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
-function save() { try { localStorage.setItem('ng_cards_v2', JSON.stringify(cards)); } catch(e) {} }
+function save() { try { localStorage.setItem('ng_cards_v3', JSON.stringify(cards)); } catch(e) {} }
 
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show ' + type;
-  setTimeout(() => t.className = 'toast', 3000);
+  setTimeout(() => t.className = 'toast', 3500);
 }
 
 // ---------- TABS ----------
@@ -473,8 +526,105 @@ function switchTab(t) {
   document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-btn-' + t).classList.add('active');
   document.getElementById('tab-' + t).classList.add('active');
-  if (t === 'prod') renderPending();
-  if (t === 'history') renderHistory();
+  if (t === 'prod') { loadCards(); }
+  if (t === 'history') { loadCards(); }
+}
+
+// ---------- LOAD DROPDOWNS (from Sheets) ----------
+async function loadDropdowns() {
+  try {
+    const url = APPS_SCRIPT_URL + '?action=getDropdowns';
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.error) { console.warn('Dropdown error:', data.error); return; }
+
+    populateSelect('q-inspector', data.qcList || [], '— เลือกผู้ตรวจสอบ —');
+    populateSelect('q-receiver',  data.prodList || [], '— เลือกผู้รับแจ้ง —');
+    populateSelect('q-operator',  data.operatorList || [], '— เลือกพนักงาน —');
+    populateSelect('q-machine',   data.machineList || [], '— เลือก Machine —');
+
+    dropdownsLoaded = true;
+  } catch(e) {
+    console.warn('Cannot load dropdowns:', e);
+    showToast('⚠️ โหลด dropdown ไม่ได้ — ตรวจสอบ Apps Script', 'error');
+  }
+}
+
+function populateSelect(id, items, placeholder) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  items.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+}
+
+// ---------- LOAD CARDS (from Sheets) ----------
+async function loadCards() {
+  const btn = document.getElementById('btn-refresh');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spin"></span> กำลังโหลด...'; }
+
+  document.getElementById('history-list').innerHTML = '<div class="load-overlay"><span class="loading-spin"></span><br><br>กำลังโหลดข้อมูลจาก Google Sheets...</div>';
+  document.getElementById('pending-list').innerHTML = '<div class="load-overlay"><span class="loading-spin"></span><br><br>กำลังโหลด...</div>';
+
+  try {
+    const url = APPS_SCRIPT_URL + '?action=getCards';
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    allCards = data.cards || [];
+    cards = [...allCards];
+    save();
+
+    applyFilters();
+    renderPending();
+
+  } catch(e) {
+    console.warn('Load cards error:', e);
+    // fallback to localStorage
+    const stored = localStorage.getItem('ng_cards_v3');
+    if (stored) {
+      allCards = JSON.parse(stored);
+      cards = [...allCards];
+      showToast('⚠️ ใช้ข้อมูล offline (cache)', 'error');
+    } else {
+      allCards = []; cards = [];
+      showToast('❌ โหลดข้อมูลไม่ได้', 'error');
+    }
+    applyFilters();
+    renderPending();
+  }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> โหลดใหม่';
+  }
+}
+
+// ---------- FILTERS ----------
+function applyFilters() {
+  const search = (document.getElementById('h-search')?.value || '').toLowerCase();
+  const status = document.getElementById('h-status')?.value || '';
+
+  let filtered = allCards.filter(c => {
+    const matchSearch = !search ||
+      (c.dwg || '').toLowerCase().includes(search) ||
+      (c.partname || '').toLowerCase().includes(search) ||
+      (c.machine || '').toLowerCase().includes(search) ||
+      (c.model || '').toLowerCase().includes(search) ||
+      (c.id || '').toLowerCase().includes(search);
+    const matchStatus = !status || c.status === status;
+    return matchSearch && matchStatus;
+  });
+
+  cards = filtered;
+  renderHistory();
 }
 
 // ---------- DWG LOOKUP ----------
@@ -505,7 +655,7 @@ async function lookupDWG() {
     }
   } catch(e) {
     status.className = 'lookup-status lookup-err';
-    status.textContent = '⚠️ เชื่อมต่อ Server ไม่ได้ — ตรวจสอบ URL';
+    status.textContent = '⚠️ เชื่อมต่อ Server ไม่ได้';
   }
 }
 
@@ -551,7 +701,6 @@ async function uploadPhotosToDrive(cardId) {
     pendingPhotos[i].uploading = true;
     renderPreviews();
     try {
-      // Convert to base64
       const base64 = p.previewUrl.split(',')[1];
       const mimeType = p.file.type;
       const fileName = cardId + '_photo' + (i + 1) + '.' + p.file.name.split('.').pop();
@@ -565,9 +714,7 @@ async function uploadPhotosToDrive(cardId) {
         pendingPhotos[i].driveUrl = data.url;
         results.push(data.url);
       }
-    } catch(e) {
-      console.error('Upload error', e);
-    }
+    } catch(e) { console.error('Upload error', e); }
     pendingPhotos[i].uploading = false;
     renderPreviews();
   }
@@ -576,18 +723,17 @@ async function uploadPhotosToDrive(cardId) {
 
 // ---------- SUBMIT QC ----------
 async function submitQC() {
-  const dwg = val('q-dwg'), qty = val('q-qty'), inspector = val('q-inspector');
+  const dwg = val('q-dwg'), qty = val('q-qty'), inspector = val('q-inspector'), machine = val('q-machine');
   if (!dwg || !qty || !inspector) {
     showToast('กรุณากรอก DWG No., จำนวน และผู้ตรวจสอบ', 'error'); return;
   }
   const btn = document.getElementById('btn-qc-submit');
   btn.disabled = true;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> กำลังบันทึก...';
+  btn.innerHTML = '<span class="loading-spin"></span> กำลังบันทึก...';
 
   const cardId = 'NG-' + Date.now();
   const defects = Array.from(document.querySelectorAll('#defect-grid input:checked')).map(i => i.value);
 
-  // Upload photos first
   let photoUrls = [];
   if (pendingPhotos.length > 0) {
     showToast('⬆️ กำลังอัปโหลดรูปภาพ...');
@@ -596,11 +742,12 @@ async function submitQC() {
 
   const card = {
     id: cardId,
-    dwg: dwg,
+    dwg,
     partname: val('q-partname') || dwg,
     model: val('q-model'),
     color: val('q-color'),
     qty: parseInt(qty) || 0,
+    machine,
     inspector,
     date: val('q-date'),
     time: val('q-time'),
@@ -614,21 +761,29 @@ async function submitQC() {
     reply: null
   };
 
-  // Save to Apps Script (Google Sheets)
   try {
-    await fetch(APPS_SCRIPT_URL, {
+    const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'saveCard', card })
     });
-  } catch(e) { console.warn('Server save failed, using local only'); }
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+  } catch(e) {
+    console.warn('Server save failed:', e);
+    showToast('⚠️ บันทึกไปยัง Sheets ไม่สำเร็จ', 'error');
+  }
 
-  cards.unshift(card);
+  allCards.unshift(card);
+  cards = [...allCards];
   save();
   showToast('✅ ออกการ์ดส้ม ' + cardId + ' สำเร็จ!', 'success');
 
   // Reset form
-  ['q-dwg','q-partname','q-model','q-color','q-qty','q-receiver','q-operator','q-issue'].forEach(id => {
+  ['q-dwg','q-partname','q-model','q-color','q-qty','q-issue'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  ['q-inspector','q-receiver','q-operator','q-machine'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.querySelectorAll('#defect-grid input').forEach(el => el.checked = false);
@@ -661,8 +816,9 @@ function cardHTML(c, showReply) {
       <div class="ng-card-body">
         <div>DWG: <span>${c.dwg || '-'}</span></div>
         <div>จำนวน NG: <span>${c.qty} ชิ้น</span></div>
-        <div>QC: <span>${c.inspector}</span></div>
-        <div>วันที่: <span>${c.date}</span></div>
+        <div>QC: <span>${c.inspector || '-'}</span></div>
+        <div>วันที่: <span>${c.date || '-'}</span></div>
+        ${c.machine ? `<div>Machine: <span>${c.machine}</span></div>` : ''}
         ${c.defects && c.defects.length ? `<div style="grid-column:1/-1">ลักษณะ: <span>${defStr}</span></div>` : ''}
       </div>
       ${photos}
@@ -681,7 +837,7 @@ function cardHTML(c, showReply) {
 }
 
 function renderPending() {
-  const pending = cards.filter(c => c.status === 'pending');
+  const pending = allCards.filter(c => c.status === 'pending');
   const el = document.getElementById('pending-list');
   if (!pending.length) {
     el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>ไม่มีการ์ดที่รอตอบกลับ</div>';
@@ -691,9 +847,10 @@ function renderPending() {
 }
 
 function renderHistory() {
-  document.getElementById('cnt-total').textContent = cards.length;
-  document.getElementById('cnt-pending').textContent = cards.filter(c => c.status === 'pending').length;
-  document.getElementById('cnt-done').textContent = cards.filter(c => c.status === 'replied').length;
+  document.getElementById('cnt-total').textContent = allCards.length;
+  document.getElementById('cnt-pending').textContent = allCards.filter(c => c.status === 'pending').length;
+  document.getElementById('cnt-done').textContent = allCards.filter(c => c.status === 'replied').length;
+
   const el = document.getElementById('history-list');
   if (!cards.length) {
     el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>ยังไม่มีการ์ดส้ม</div>';
@@ -717,7 +874,7 @@ async function submitReply() {
   const id = document.getElementById('reply-card-id').value;
   const fixer = val('r-fixer');
   if (!fixer) { showToast('กรุณากรอกชื่อผู้แก้ไข', 'error'); return; }
-  const card = cards.find(c => c.id === id);
+  const card = allCards.find(c => c.id === id);
   if (!card) return;
   const btn = document.getElementById('btn-reply-submit');
   btn.disabled = true;
@@ -747,20 +904,22 @@ async function submitReply() {
   save();
   closeModal('reply-modal');
   showToast('✅ บันทึกการตอบกลับสำเร็จ!', 'success');
+  applyFilters();
   renderPending();
   btn.disabled = false;
 }
 
 // ---------- VIEW CARD ----------
 function viewCard(id) {
-  const c = cards.find(x => x.id === id);
+  const c = allCards.find(x => x.id === id);
   if (!c) return;
   const defStr = c.defects && c.defects.length ? c.defects.join(', ') : '-';
   const rows1 = [
     ['รหัสการ์ด', c.id], ['DWG No.', c.dwg || '-'],
-    ['Part Name', c.partname], ['Model', c.model || '-'],
-    ['Color', c.color || '-'], ['จำนวน NG', c.qty + ' ชิ้น'],
-    ['ผู้ตรวจสอบ', c.inspector], ['วันที่/เวลา', c.date + ' ' + (c.time || '')],
+    ['Part Name', c.partname || '-'], ['Model', c.model || '-'],
+    ['Color', c.color || '-'], ['จำนวน NG', (c.qty || 0) + ' ชิ้น'],
+    ['Machine', c.machine || '-'],
+    ['ผู้ตรวจสอบ', c.inspector || '-'], ['วันที่/เวลา', (c.date || '-') + ' ' + (c.time || '')],
     ['ผู้รับแจ้ง', c.receiver || '-'], ['พนักงานหน้าเครื่อง', c.operator || '-'],
     ['ปัญหา', c.issue || '-'], ['ลักษณะของเสีย', defStr]
   ];
