@@ -153,8 +153,12 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .detail-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
 .detail-label{color:var(--muted)}
 .detail-val{font-weight:600;text-align:right;max-width:65%;word-break:break-word}
-.detail-photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.detail-photos a img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+.detail-photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+.detail-photo-card{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#FAFAF8}
+.detail-photo-card img{width:100%;aspect-ratio:1.25;object-fit:cover;display:block;background:#eee}
+.detail-photo-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;font-size:11px}
+.detail-photo-meta span{color:var(--muted);font-weight:700}
+.detail-photo-meta a{font-weight:700;color:var(--orange);white-space:nowrap}
 .status-band{padding:7px 16px;font-size:12px;font-weight:700;text-align:center;letter-spacing:.3px}
 .status-band.pending{background:var(--orange-light);color:var(--orange-dark)}
 .status-band.done{background:var(--green-light);color:var(--green)}
@@ -1020,8 +1024,16 @@ function viewCard(id) {
   html += `<div class="modal-body"><div class="detail-section"><div class="detail-section-title">ส่วนที่ 1 — การตรวจสอบ (QC)</div>`;
   html += rows1.map(([l,v]) => `<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`).join('');
   if (c.photoUrls && c.photoUrls.length) {
-    html += `<div class="detail-row"><span class="detail-label">รูปภาพ</span></div>`;
-    html += `<div class="detail-photos">${c.photoUrls.map(u => `<a href="${u}" target="_blank"><img src="${u}" alt="NG" onerror="this.style.display='none'"></a>`).join('')}</div>`;
+    html += `<div class="detail-section-title" style="margin-top:14px">รายละเอียดรูปภาพ (${c.photoUrls.length})</div>`;
+    html += `<div class="detail-photos">${c.photoUrls.map((u, i) => `
+      <div class="detail-photo-card">
+        <a href="${u}" target="_blank"><img src="${u}" alt="NG photo ${i + 1}" onerror="this.style.display='none'"></a>
+        <div class="detail-photo-meta">
+          <span>รูปที่ ${i + 1}</span>
+          <a href="${u}" target="_blank">เปิดรูปเต็ม</a>
+        </div>
+      </div>
+    `).join('')}</div>`;
   }
   html += '</div>';
   if (c.reply) {
