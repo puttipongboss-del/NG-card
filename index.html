@@ -162,6 +162,10 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .status-band{padding:7px 16px;font-size:12px;font-weight:700;text-align:center;letter-spacing:.3px}
 .status-band.pending{background:var(--orange-light);color:var(--orange-dark)}
 .status-band.done{background:var(--green-light);color:var(--green)}
+.modal-actions{display:flex;gap:8px;padding:0 16px 16px}
+.modal-actions .btn-submit{margin-top:0}
+.btn-cancel{width:100%;padding:12px;background:#FAFAF8;color:var(--muted);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-weight:700;cursor:pointer}
+.confirm-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}
 
 /* ===== TOAST ===== */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:#2C2C2A;color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:600;z-index:999;transition:transform .3s;white-space:nowrap}
@@ -394,6 +398,29 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 
   <div id="history-list"></div>
+</div>
+
+<!-- ========== QC NOTIFY MODAL ========== -->
+<div class="modal-overlay" id="qc-notify-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>มีการ์ดส้มเข้ามาแล้ว</h3>
+      <button class="modal-close" onclick="closeModal('qc-notify-modal')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-section">
+        <div class="status-band pending">แจ้งเตือน Production</div>
+        <div id="qc-notify-body" style="margin-top:12px"></div>
+        <div class="confirm-note">กรุณาตรวจสอบรายการในหน้า Production ตอบกลับ</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('qc-notify-modal')">ปิด</button>
+      <button class="btn-submit" onclick="closeModal('qc-notify-modal'); switchTab('prod');">ไปหน้า Production</button>
+    </div>
+  </div>
 </div>
 
 <!-- ========== REPLY MODAL ========== -->
@@ -806,6 +833,25 @@ async function uploadPhotosToDrive(cardId) {
 }
 
 // ---------- SUBMIT QC ----------
+function showQCNotify(card) {
+  const defects = card.defects || [];
+  const rows = [
+    ['รหัสการ์ด', card.id],
+    ['Machine', card.machine || '-'],
+    ['งาน/Part Name', card.partname || '-'],
+    ['DWG No.', card.dwg || '-'],
+    ['Model', card.model || '-'],
+    ['จำนวน NG', (card.qty || 0) + ' ชิ้น'],
+    ['ผู้ตรวจสอบ', card.inspector || '-'],
+    ['รูปภาพ', card.photoUrls && card.photoUrls.length ? card.photoUrls.length + ' รูป' : '-'],
+    ['ลักษณะของเสีย', defects.length ? defects.join(', ') : '-']
+  ];
+  document.getElementById('qc-notify-body').innerHTML = rows
+    .map(([l, v]) => `<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`)
+    .join('');
+  document.getElementById('qc-notify-modal').classList.add('open');
+}
+
 async function submitQC() {
   if (photosPreparing) {
     showToast('กำลังเตรียมรูป กรุณารอสักครู่', 'error');
@@ -870,6 +916,7 @@ async function submitQC() {
   allCards.unshift(card);
   cards = [...allCards];
   save();
+  showQCNotify(card);
   showToast('✅ ออกการ์ดส้ม ' + cardId + ' สำเร็จ!', 'success');
 
   // Reset form
