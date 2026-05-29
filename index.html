@@ -492,7 +492,10 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzHWgeZb_jXELbQ
 async function gasCall(action, payload = {}) {
   const url = APPS_SCRIPT_URL + '?action=' + action + '&payload=' + encodeURIComponent(JSON.stringify(payload));
   const res = await fetch(url);
-  return res.json();
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
 }
 // ============================================================
 
@@ -520,7 +523,7 @@ loadDropdowns();
 function today() { return new Date().toISOString().slice(0, 10); }
 function nowTime() { return new Date().toTimeString().slice(0, 5); }
 function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
-function save() { try { localStorage.setItem('ng_cards_v3', JSON.stringify(cards)); } catch(e) {} }
+function save() { try { localStorage.setItem('ng_cards_v3', JSON.stringify(allCards)); } catch(e) {} }
 
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
@@ -727,8 +730,8 @@ async function uploadPhotosToDrive(cardId) {
 // ---------- SUBMIT QC ----------
 async function submitQC() {
   const dwg = val('q-dwg'), qty = val('q-qty'), inspector = val('q-inspector'), machine = val('q-machine');
-  if (!dwg || !qty || !inspector) {
-    showToast('กรุณากรอก DWG No., จำนวน และผู้ตรวจสอบ', 'error'); return;
+  if (!dwg || !qty || !inspector || !machine) {
+    showToast('กรุณากรอก DWG No., จำนวน, Machine และผู้ตรวจสอบ', 'error'); return;
   }
   const btn = document.getElementById('btn-qc-submit');
   btn.disabled = true;
@@ -769,7 +772,10 @@ async function submitQC() {
     if (result.error) throw new Error(result.error);
   } catch(e) {
     console.warn('Server save failed:', e);
-    showToast('⚠️ บันทึกไปยัง Sheets ไม่สำเร็จ', 'error');
+    showToast('บันทึกไปยัง Sheets ไม่สำเร็จ: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> ออกการ์ดส้ม';
+    return;
   }
 
   allCards.unshift(card);
@@ -876,6 +882,8 @@ async function submitReply() {
   if (!card) return;
   const btn = document.getElementById('btn-reply-submit');
   btn.disabled = true;
+  const previousReply = card.reply;
+  const previousStatus = card.status;
 
   card.reply = {
     fixer, date: val('r-date'),
@@ -893,7 +901,13 @@ async function submitReply() {
 
   try {
     await gasCall('updateReply', { cardId: id, reply: card.reply });
-  } catch(e) {}
+  } catch(e) {
+    card.reply = previousReply;
+    card.status = previousStatus;
+    showToast('บันทึกการตอบกลับไปยัง Sheets ไม่สำเร็จ: ' + e.message, 'error');
+    btn.disabled = false;
+    return;
+  }
 
   save();
   closeModal('reply-modal');
