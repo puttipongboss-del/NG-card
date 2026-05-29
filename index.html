@@ -497,6 +497,18 @@ async function gasCall(action, payload = {}) {
   if (data.error) throw new Error(data.error);
   return data;
 }
+
+async function gasPost(action, payload = {}) {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, ...payload })
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
 // ============================================================
 
 let cards = [];           // loaded from Sheets
@@ -750,7 +762,7 @@ async function uploadPhotosToDrive(cardId) {
       const base64 = p.previewUrl.split(',')[1];
       const mimeType = p.mimeType || p.file.type || 'image/jpeg';
       const fileName = cardId + '_photo' + (i + 1) + '.' + (p.extension || p.file.name.split('.').pop());
-      const data = await gasCall('uploadPhoto', { fileName, base64, mimeType, cardId });
+      const data = await gasPost('uploadPhoto', { fileName, base64, mimeType, cardId });
       if (data.url) {
         pendingPhotos[i].driveUrl = data.url;
         results.push(data.url);
