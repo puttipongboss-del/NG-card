@@ -485,7 +485,15 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 // ============================================================
 // 🔧 CONFIG — ใส่ URL Apps Script ที่ deploy แล้ว
 // ============================================================
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwSNRjRPDI2bfVOkWH8Z2wiTb2l78ZKFctJkLfs8XMs6FLLe45vFsW0JJ0J36nCpq0/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzHWgeZb_jXELbQLqD7YD0Oc6-EBaRoEYJ7LU9aOkc--cV6zBJwrXJia35Urq8kcNGQ/exec';
+
+// Apps Script ไม่รองรับ POST จาก browser โดยตรง (redirect ทำให้ body หาย)
+// ใช้ GET + payload แทนเสมอ
+async function gasCall(action, payload = {}) {
+  const url = APPS_SCRIPT_URL + '?action=' + action + '&payload=' + encodeURIComponent(JSON.stringify(payload));
+  const res = await fetch(url);
+  return res.json();
+}
 // ============================================================
 
 let cards = [];           // loaded from Sheets
@@ -704,12 +712,7 @@ async function uploadPhotosToDrive(cardId) {
       const base64 = p.previewUrl.split(',')[1];
       const mimeType = p.file.type;
       const fileName = cardId + '_photo' + (i + 1) + '.' + p.file.name.split('.').pop();
-      const res = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'uploadPhoto', fileName, base64, mimeType, cardId })
-      });
-      const data = await res.json();
+      const data = await gasCall('uploadPhoto', { fileName, base64, mimeType, cardId });
       if (data.url) {
         pendingPhotos[i].driveUrl = data.url;
         results.push(data.url);
@@ -762,12 +765,7 @@ async function submitQC() {
   };
 
   try {
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveCard', card })
-    });
-    const result = await res.json();
+    const result = await gasCall('saveCard', card);
     if (result.error) throw new Error(result.error);
   } catch(e) {
     console.warn('Server save failed:', e);
@@ -894,11 +892,7 @@ async function submitReply() {
   card.status = 'replied';
 
   try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'updateReply', cardId: id, reply: card.reply })
-    });
+    await gasCall('updateReply', { cardId: id, reply: card.reply });
   } catch(e) {}
 
   save();
