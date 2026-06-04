@@ -395,6 +395,10 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
       โหลดใหม่
     </button>
+    <button class="btn-refresh" onclick="exportExcel()" id="btn-export">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export Excel
+    </button>
   </div>
 
   <div id="history-list"></div>
@@ -677,6 +681,29 @@ async function loadCards() {
   if (btn) {
     btn.disabled = false;
     btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> โหลดใหม่';
+  }
+}
+
+async function exportExcel() {
+  const btn = document.getElementById('btn-export');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading-spin"></span> กำลังสร้าง...';
+  }
+  try {
+    const url = APPS_SCRIPT_URL + '?action=exportExcel';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showToast('สร้างไฟล์ Excel สำเร็จ', 'success');
+    window.open(data.exportUrl || data.reportUrl, '_blank');
+  } catch(e) {
+    console.error('Export Excel error:', e);
+    showToast('Export Excel ไม่สำเร็จ: ' + e.message, 'error');
+  }
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export Excel';
   }
 }
 
