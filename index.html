@@ -706,6 +706,29 @@ async function exportExcel() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spin"></span> กำลังสร้าง...'; }
 
   try {
+    // ถ้า allCards ว่าง ให้โหลดจาก Sheets ก่อน
+    if (!allCards || allCards.length === 0) {
+      if (btn) btn.innerHTML = '<span class="loading-spin"></span> กำลังโหลดข้อมูล...';
+      try {
+        const res  = await fetch(APPS_SCRIPT_URL + '?action=getCards');
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        allCards = data.cards || [];
+        cards    = [...allCards];
+        save();
+      } catch(e) {
+        showToast('โหลดข้อมูลไม่ได้: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
+        return;
+      }
+    }
+
+    if (allCards.length === 0) {
+      showToast('ไม่มีข้อมูลการ์ดส้มสำหรับ export', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
+      return;
+    }
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'NG Card System';
     workbook.created = new Date();
