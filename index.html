@@ -185,6 +185,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -684,27 +685,206 @@ async function loadCards() {
   }
 }
 
+// ── helpers ─────────────────────────────────────────────────
+async function fetchPhotoBase64(photoUrl) {
+  try {
+    const payload = encodeURIComponent(JSON.stringify({ url: photoUrl }));
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=getPhotoBase64&payload=' + payload);
+    const data = await res.json();
+    if (!data.success) return null;
+    return { base64: data.base64, mimeType: data.mimeType };
+  } catch(e) {
+    console.warn('fetchPhotoBase64 error:', e);
+    return null;
+  }
+}
+
+// ── main export ──────────────────────────────────────────────
 async function exportExcel() {
   const btn = document.getElementById('btn-export');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="loading-spin"></span> กำลังสร้าง...';
-  }
+  const originalHTML = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spin"></span> กำลังสร้าง...'; }
+
   try {
-    const url = APPS_SCRIPT_URL + '?action=exportExcel';
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    showToast('สร้างไฟล์ Excel สำเร็จ', 'success');
-    window.open(data.exportUrl || data.reportUrl, '_blank');
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'NG Card System';
+    workbook.created = new Date();
+
+    // ── Sheet 1: NG Cards ──────────────────────────────────
+    const mainSheet = workbook.addWorksheet('NG Cards', {
+      views: [{ state: 'frozen', ySplit: 1 }]
+    });
+    mainSheet.columns = [
+      { header: 'Card ID',      key: 'id',        width: 22 },
+      { header: 'DWG No.',      key: 'dwg',       width: 16 },
+      { header: 'Part Name',    key: 'partname',  width: 24 },
+      { header: 'Model',        key: 'model',     width: 16 },
+      { header: 'Color',        key: 'color',     width: 12 },
+      { header: 'Qty',          key: 'qty',       width: 8  },
+      { header: 'Machine',      key: 'machine',   width: 14 },
+      { header: 'Inspector',    key: 'inspector', width: 18 },
+      { header: 'Date',         key: 'date',      width: 13 },
+      { header: 'Time',         key: 'time',      width: 10 },
+      { header: 'Receiver',     key: 'receiver',  width: 18 },
+      { header: 'Operator',     key: 'operator',  width: 18 },
+      { header: 'Issue',        key: 'issue',     width: 30 },
+      { header: 'Defects',      key: 'defects',   width: 30 },
+      { header: 'Status',       key: 'status',    width: 12 },
+      { header: 'Created At',   key: 'createdAt', width: 22 },
+      { header: 'Reply Fixer',  key: 'fixer',     width: 18 },
+      { header: 'Reply Date',   key: 'replyDate', width: 13 },
+      { header: 'Reply Cause',  key: 'cause',     width: 35 },
+    ];
+
+    // style header
+    mainSheet.getRow(1).eachCell(cell => {
+      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAECE7' } };
+      cell.font      = { bold: true, size: 11 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border    = { bottom: { style: 'medium', color: { argb: 'FFE07050' } } };
+    });
+    mainSheet.getRow(1).height = 22;
+
+    allCards.forEach((card, idx) => {
+      const reply = card.reply || {};
+      const row   = mainSheet.addRow({
+        id:        card.id        || '',
+        dwg:       card.dwg       || '',
+        partname:  card.partname  || '',
+        model:     card.model     || '',
+        color:     card.color     || '',
+        qty:       parseInt(card.qty) || 0,
+        machine:   card.machine   || '',
+        inspector: card.inspector || '',
+        date:      card.date      || '',
+        time:      card.time      || '',
+        receiver:  card.receiver  || '',
+        operator:  card.operator  || '',
+        issue:     card.issue     || '',
+        defects:   Array.isArray(card.defects) ? card.defects.join(', ') : (card.defects || ''),
+        status:    card.status    || 'pending',
+        createdAt: card.createdAt || '',
+        fixer:     reply.fixer    || '',
+        replyDate: reply.date     || '',
+        cause:     reply.cause    || '',
+      });
+
+      const bgColor = idx % 2 === 0 ? 'FFFFFFFF' : 'FFFFF8F5';
+      row.eachCell(cell => {
+        cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
+        cell.alignment = { vertical: 'middle', wrapText: true };
+      });
+
+      // highlight status
+      const statusCell = row.getCell('status');
+      if ((card.status || '') === 'pending') {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3CD' } };
+        statusCell.font = { color: { argb: 'FF856404' }, bold: true };
+      } else if ((card.status || '') === 'replied') {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1E7DD' } };
+        statusCell.font = { color: { argb: 'FF0A3622' }, bold: true };
+      }
+      row.height = 20;
+    });
+
+    // ── Sheet 2: Photos ─────────────────────────────────────
+    const photoSheet = workbook.addWorksheet('Photos', {
+      views: [{ state: 'frozen', ySplit: 1 }]
+    });
+    photoSheet.columns = [
+      { header: 'Card ID',   key: 'id',       width: 22 },
+      { header: 'Machine',   key: 'machine',  width: 14 },
+      { header: 'Part Name', key: 'partname', width: 24 },
+      { header: 'Photo No.', key: 'photoNo',  width: 10 },
+      { header: 'Photo',     key: 'photo',    width: 24 },
+    ];
+
+    photoSheet.getRow(1).eachCell(cell => {
+      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAECE7' } };
+      cell.font      = { bold: true, size: 11 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border    = { bottom: { style: 'medium', color: { argb: 'FFE07050' } } };
+    });
+    photoSheet.getRow(1).height = 22;
+
+    let excelRow = 2;
+    let totalPhotos = 0;
+    allCards.forEach(c => { totalPhotos += (c.photoUrls || []).length; });
+    let fetched = 0;
+
+    for (const card of allCards) {
+      const photoUrls = card.photoUrls || [];
+      if (!photoUrls.length) continue;
+
+      for (let i = 0; i < photoUrls.length; i++) {
+        const url = photoUrls[i];
+        if (!url) continue;
+
+        fetched++;
+        if (btn) btn.innerHTML = `<span class="loading-spin"></span> โหลดรูป ${fetched}/${totalPhotos}...`;
+
+        const dataRow = photoSheet.getRow(excelRow);
+        dataRow.getCell(1).value = card.id       || '';
+        dataRow.getCell(2).value = card.machine  || '';
+        dataRow.getCell(3).value = card.partname || '';
+        dataRow.getCell(4).value = i + 1;
+        dataRow.height           = 90;
+
+        for (let col = 1; col <= 4; col++) {
+          const cell = dataRow.getCell(col);
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.fill      = { type: 'pattern', pattern: 'solid',
+                             fgColor: { argb: excelRow % 2 === 0 ? 'FFFFF8F5' : 'FFFFFFFF' } };
+        }
+
+        // ดึง base64 จาก Apps Script แล้ว embed รูปจริง
+        const photoData = await fetchPhotoBase64(url);
+        if (photoData) {
+          try {
+            const ext     = photoData.mimeType.includes('png') ? 'png' : 'jpeg';
+            const imageId = workbook.addImage({ base64: photoData.base64, extension: ext });
+            photoSheet.addImage(imageId, {
+              tl:     { col: 4,     row: excelRow - 1 },
+              br:     { col: 4 + 1, row: excelRow },
+              editAs: 'oneCell'
+            });
+            photoSheet.getColumn(5).width = 24;
+          } catch(imgErr) {
+            console.warn('Image embed error:', imgErr);
+            dataRow.getCell(5).value = url;
+          }
+        } else {
+          dataRow.getCell(5).value = url;   // fallback → ใส่ link
+        }
+
+        excelRow++;
+      }
+    }
+
+    // ── Download ─────────────────────────────────────────────
+    if (btn) btn.innerHTML = '<span class="loading-spin"></span> กำลัง generate ไฟล์...';
+
+    const buffer  = await workbook.xlsx.writeBuffer();
+    const blob    = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const link    = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    link.href     = URL.createObjectURL(blob);
+    link.download = `NG_Report_${dateStr}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
+    showToast('✅ Export Excel สำเร็จ (พร้อมรูปภาพ)', 'success');
+
   } catch(e) {
     console.error('Export Excel error:', e);
     showToast('Export Excel ไม่สำเร็จ: ' + e.message, 'error');
   }
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export Excel';
-  }
+
+  if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
 }
 
 // ---------- FILTERS ----------
