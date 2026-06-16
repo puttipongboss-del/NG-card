@@ -250,11 +250,11 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div class="form-row">
       <div class="form-group">
         <label>Part Name</label>
-        <input type="text" id="q-partname" placeholder="— ดึงจาก DWG อัตโนมัติ —" readonly>
+        <input type="text" id="q-partname" placeholder="ดึงจาก DWG หรือพิมพ์เอง">
       </div>
       <div class="form-group">
         <label>Model</label>
-        <input type="text" id="q-model" placeholder="— ดึงจาก DWG อัตโนมัติ —" readonly>
+        <input type="text" id="q-model" placeholder="ดึงจาก DWG หรือพิมพ์เอง">
       </div>
     </div>
 
@@ -933,8 +933,6 @@ function applyFilters() {
 // ---------- DWG LOOKUP ----------
 function clearLookup() {
   document.getElementById('lookup-status').textContent = '';
-  document.getElementById('q-partname').value = '';
-  document.getElementById('q-model').value = '';
 }
 
 async function lookupDWG() {
@@ -954,11 +952,11 @@ async function lookupDWG() {
       status.textContent = '✅ พบข้อมูล: ' + data.partName + ' | ' + data.model;
     } else {
       status.className = 'lookup-status lookup-err';
-      status.textContent = '❌ ไม่พบ DWG No. นี้ใน Database';
+      status.textContent = '❌ ไม่พบ DWG No. นี้ใน Database — สามารถกรอก Part Name และ Model เองได้';
     }
   } catch(e) {
     status.className = 'lookup-status lookup-err';
-    status.textContent = '⚠️ เชื่อมต่อ Server ไม่ได้';
+    status.textContent = '⚠️ เชื่อมต่อ Server ไม่ได้ — สามารถกรอก Part Name และ Model เองได้';
   }
 }
 
