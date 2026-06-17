@@ -70,6 +70,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .defect-item{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border);background:#FAFAF8;transition:all .15s;user-select:none}
 .defect-item input[type=checkbox]{accent-color:var(--orange);width:15px;height:15px;flex-shrink:0}
 .defect-item.checked{background:var(--orange-light);border-color:var(--orange-mid);color:var(--orange-dark);font-weight:600}
+.defect-other-text{display:none;margin:-8px 0 14px}
+.defect-other-text.show{display:block}
 
 /* ===== PHOTO UPLOAD ===== */
 .photo-zone{border:2px dashed var(--border);border-radius:var(--radius-lg);padding:20px;text-align:center;cursor:pointer;background:#FAFAF8;transition:all .2s;position:relative}
@@ -340,7 +342,10 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <label class="defect-item"><input type="checkbox" value="งานแตก"> งานแตก</label>
       <label class="defect-item"><input type="checkbox" value="dimension ไม่ได้"> dimension ไม่ได้</label>
 
-      <label class="defect-item"><input type="checkbox" value="อื่นๆ"> อื่นๆ</label>
+      <label class="defect-item"><input type="checkbox" id="defect-other-check" value="อื่นๆ"> อื่นๆ</label>
+    </div>
+    <div class="defect-other-text" id="defect-other-wrap">
+      <input type="text" id="q-defect-other" placeholder="ระบุลักษณะของเสียอื่นๆ">
     </div>
 
     <div class="divider">
@@ -567,6 +572,7 @@ if (APPS_SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
 document.addEventListener('change', e => {
   const lbl = e.target.closest('.defect-item');
   if (lbl) lbl.classList.toggle('checked', e.target.checked);
+  if (e.target.id === 'defect-other-check') syncOtherDefectInput();
 });
 
 // Load dropdowns on page start
@@ -576,6 +582,29 @@ loadDropdowns();
 function today() { return new Date().toISOString().slice(0, 10); }
 function nowTime() { return new Date().toTimeString().slice(0, 5); }
 function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function syncOtherDefectInput() {
+  const checked = document.getElementById('defect-other-check').checked;
+  const wrap = document.getElementById('defect-other-wrap');
+  const input = document.getElementById('q-defect-other');
+  wrap.classList.toggle('show', checked);
+  if (checked) {
+    input.focus();
+  } else {
+    input.value = '';
+  }
+}
+
+function getSelectedDefects() {
+  const selected = Array.from(document.querySelectorAll('#defect-grid input:checked'));
+  const defects = selected
+    .filter(i => i.id !== 'defect-other-check')
+    .map(i => i.value.trim());
+  if (document.getElementById('defect-other-check').checked) {
+    const otherText = val('q-defect-other');
+    defects.push(otherText ? 'อื่นๆ: ' + otherText : 'อื่นๆ');
+  }
+  return defects;
+}
 function save() { try { localStorage.setItem('ng_cards_v3', JSON.stringify(allCards)); } catch(e) {} }
 
 function showToast(msg, type = '') {
@@ -1094,7 +1123,7 @@ async function submitQC() {
   btn.innerHTML = '<span class="loading-spin"></span> กำลังบันทึก...';
 
   const cardId = 'NG-' + Date.now();
-  const defects = Array.from(document.querySelectorAll('#defect-grid input:checked')).map(i => i.value);
+  const defects = getSelectedDefects();
 
   let photoUrls = [];
   if (pendingPhotos.length > 0) {
@@ -1148,7 +1177,7 @@ async function submitQC() {
   showToast('✅ ออกการ์ดส้ม ' + cardId + ' สำเร็จ!', 'success');
 
   // Reset form
-  ['q-dwg','q-partname','q-model','q-color','q-qty','q-issue'].forEach(id => {
+  ['q-dwg','q-partname','q-model','q-color','q-qty','q-issue','q-defect-other'].forEach(id => {
     document.getElementById(id).value = '';
   });
   ['q-inspector','q-receiver','q-operator','q-machine'].forEach(id => {
@@ -1156,6 +1185,7 @@ async function submitQC() {
   });
   document.querySelectorAll('#defect-grid input').forEach(el => el.checked = false);
   document.querySelectorAll('#defect-grid label').forEach(el => el.classList.remove('checked'));
+  syncOtherDefectInput();
   document.getElementById('lookup-status').textContent = '';
   pendingPhotos = [];
   renderPreviews();
