@@ -109,6 +109,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .filter-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
 .filter-row select{flex:1;min-width:120px;font-size:12px;padding:6px 10px}
 .filter-row input[type=text]{flex:1;min-width:120px;font-size:12px;padding:6px 10px}
+.filter-row input[type=date]{flex:1;min-width:132px;font-size:12px;padding:6px 10px}
+.filter-label{align-self:center;font-size:11px;color:var(--muted);font-weight:700;white-space:nowrap}
 .btn-refresh{padding:6px 12px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap}
 .btn-refresh svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2}
 .btn-refresh:disabled{opacity:.5;cursor:not-allowed}
@@ -397,6 +399,10 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <option value="pending">⏳ รอตอบกลับ</option>
       <option value="replied">✅ แก้ไขแล้ว</option>
     </select>
+    <span class="filter-label">จากวันที่</span>
+    <input type="date" id="h-date-from" title="วันที่เริ่มต้น" onchange="applyFilters()">
+    <span class="filter-label">ถึง</span>
+    <input type="date" id="h-date-to" title="วันที่สิ้นสุด" onchange="applyFilters()">
     <button class="btn-refresh" onclick="loadCards()" id="btn-refresh">
       <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
       โหลดใหม่
@@ -605,6 +611,43 @@ function getSelectedDefects() {
   }
   return defects;
 }
+
+function normalizeCardDate(value) {
+  const text = (value || '').toString().trim();
+  if (!text) return '';
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const slash = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (slash) {
+    const day = slash[1].padStart(2, '0');
+    const month = slash[2].padStart(2, '0');
+    return `${slash[3]}-${month}-${day}`;
+  }
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return text;
+}
+
+function getFilteredCards() {
+  const search = (document.getElementById('h-search')?.value || '').toLowerCase();
+  const status = document.getElementById('h-status')?.value || '';
+  const dateFrom = document.getElementById('h-date-from')?.value || '';
+  const dateTo = document.getElementById('h-date-to')?.value || '';
+
+  return allCards.filter(c => {
+    const matchSearch = !search ||
+      (c.dwg || '').toLowerCase().includes(search) ||
+      (c.partname || '').toLowerCase().includes(search) ||
+      (c.machine || '').toLowerCase().includes(search) ||
+      (c.model || '').toLowerCase().includes(search) ||
+      (c.id || '').toLowerCase().includes(search);
+    const matchStatus = !status || c.status === status;
+    const cardDate = normalizeCardDate(c.date || c.createdAt);
+    const matchDateFrom = !dateFrom || (cardDate && cardDate >= dateFrom);
+    const matchDateTo = !dateTo || (cardDate && cardDate <= dateTo);
+    return matchSearch && matchStatus && matchDateFrom && matchDateTo;
+  });
+}
 function save() { try { localStorage.setItem('ng_cards_v3', JSON.stringify(allCards)); } catch(e) {} }
 
 function showToast(msg, type = '') {
@@ -758,6 +801,21 @@ async function exportExcel() {
       return;
     }
 
+    const dateFrom = document.getElementById('h-date-from')?.value || '';
+    const dateTo = document.getElementById('h-date-to')?.value || '';
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      showToast('ช่วงวันที่ไม่ถูกต้อง: วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
+      return;
+    }
+
+    const exportCards = getFilteredCards();
+    if (exportCards.length === 0) {
+      showToast('ไม่มีข้อมูลตามเงื่อนไขวันที่/ตัวกรองสำหรับ export', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
+      return;
+    }
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'NG Card System';
     workbook.created = new Date();
@@ -797,7 +855,7 @@ async function exportExcel() {
     });
     mainSheet.getRow(1).height = 22;
 
-    allCards.forEach((card, idx) => {
+    exportCards.forEach((card, idx) => {
       const reply = card.reply || {};
       const row   = mainSheet.addRow({
         id:        card.id        || '',
@@ -861,10 +919,10 @@ async function exportExcel() {
 
     let excelRow = 2;
     let totalPhotos = 0;
-    allCards.forEach(c => { totalPhotos += (c.photoUrls || []).length; });
+    exportCards.forEach(c => { totalPhotos += (c.photoUrls || []).length; });
     let fetched = 0;
 
-    for (const card of allCards) {
+    for (const card of exportCards) {
       const photoUrls = card.photoUrls || [];
       if (!photoUrls.length) continue;
 
@@ -922,8 +980,9 @@ async function exportExcel() {
     });
     const link    = document.createElement('a');
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const rangeStr = dateFrom || dateTo ? `_${dateFrom || 'start'}_to_${dateTo || 'end'}` : '';
     link.href     = URL.createObjectURL(blob);
-    link.download = `NG_Report_${dateStr}.xlsx`;
+    link.download = `NG_Report${rangeStr}_${dateStr}.xlsx`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -941,21 +1000,9 @@ async function exportExcel() {
 
 // ---------- FILTERS ----------
 function applyFilters() {
-  const search = (document.getElementById('h-search')?.value || '').toLowerCase();
-  const status = document.getElementById('h-status')?.value || '';
-
-  let filtered = allCards.filter(c => {
-    const matchSearch = !search ||
-      (c.dwg || '').toLowerCase().includes(search) ||
-      (c.partname || '').toLowerCase().includes(search) ||
-      (c.machine || '').toLowerCase().includes(search) ||
-      (c.model || '').toLowerCase().includes(search) ||
-      (c.id || '').toLowerCase().includes(search);
-    const matchStatus = !status || c.status === status;
-    return matchSearch && matchStatus;
-  });
-
-  cards = filtered;
+  const dateFrom = document.getElementById('h-date-from')?.value || '';
+  const dateTo = document.getElementById('h-date-to')?.value || '';
+  cards = dateFrom && dateTo && dateFrom > dateTo ? [] : getFilteredCards();
   renderHistory();
 }
 
