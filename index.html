@@ -311,13 +311,13 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       </div>
       <div class="form-group">
         <label>วันที่ <span class="req">*</span></label>
-        <input type="date" id="q-date">
+        <input type="date" id="q-date" readonly>
       </div>
     </div>
     <div class="form-row single">
       <div class="form-group">
         <label>เวลา</label>
-        <input type="time" id="q-time">
+        <input type="time" id="q-time" step="1" lang="en-GB" readonly>
       </div>
     </div>
 
@@ -457,7 +457,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         </div>
         <div class="form-group">
           <label>วันที่แก้ไข</label>
-          <input type="date" id="r-date">
+          <input type="date" id="r-date" readonly>
         </div>
       </div>
       <div class="form-row">
@@ -490,7 +490,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         </div>
         <div class="form-group">
           <label>วันที่ตรวจซ้ำ</label>
-          <input type="date" id="r-recheck-date">
+          <input type="date" id="r-recheck-date" readonly>
         </div>
       </div>
       <div class="form-row">
@@ -567,10 +567,11 @@ let allCards = [];        // unfiltered
 let pendingPhotos = [];   // [{file, previewUrl, driveUrl}]
 let dropdownsLoaded = false;
 let photosPreparing = false;
+let clockTimer = null;
 
 // ---------- INIT ----------
-document.getElementById('q-date').value = today();
-document.getElementById('q-time').value = nowTime();
+setLiveDateTime();
+startLiveClock();
 if (APPS_SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
   document.getElementById('config-banner').style.display = 'block';
 }
@@ -586,8 +587,29 @@ loadDropdowns();
 
 // ---------- UTILS ----------
 function today() { return new Date().toISOString().slice(0, 10); }
-function nowTime() { return new Date().toTimeString().slice(0, 5); }
+function nowTime() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return hh + ':' + mm + ':' + ss;
+}
 function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+// Fill q-date / q-time with the current date/time (always 24h, HH:MM:SS)
+function setLiveDateTime() {
+  const dateEl = document.getElementById('q-date');
+  const timeEl = document.getElementById('q-time');
+  if (dateEl) dateEl.value = today();
+  if (timeEl) timeEl.value = nowTime();
+}
+
+// Keep the QC form's date/time fields auto-updated in 24h format while the form is untouched
+function startLiveClock() {
+  if (clockTimer) clearInterval(clockTimer);
+  clockTimer = setInterval(setLiveDateTime, 1000);
+}
+
 function syncOtherDefectInput() {
   const checked = document.getElementById('defect-other-check').checked;
   const wrap = document.getElementById('defect-other-wrap');
@@ -1236,8 +1258,7 @@ async function submitQC() {
   document.getElementById('lookup-status').textContent = '';
   pendingPhotos = [];
   renderPreviews();
-  document.getElementById('q-date').value = today();
-  document.getElementById('q-time').value = nowTime();
+  setLiveDateTime();
   btn.disabled = false;
   btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> ออกการ์ดส้ม';
 }
