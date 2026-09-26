@@ -26,9 +26,8 @@ a{color:var(--orange);text-decoration:none}
 .tab{flex:1;padding:11px 8px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px}
 .tab svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
 .tab.active{color:var(--orange);border-bottom-color:var(--orange);background:var(--orange-light)}
-.tab{position:relative}
-.tab-badge{position:absolute;top:4px;right:10px;background:#E24B4A;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 4px;line-height:1}
-.tab-badge.show{display:flex}
+.tab-prod.active{color:var(--green);border-bottom-color:var(--green);background:var(--green-light)}
+.tab-replied.active{color:#3568A8;border-bottom-color:#3568A8;background:#EAF2FB}
 .tab-content{display:none;padding:16px;max-width:680px;margin:0 auto}
 .tab-content.active{display:block}
 
@@ -205,18 +204,21 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 </div>
 
 <div class="tab-bar">
-  <button class="tab active" onclick="switchTab('qc')" id="tab-btn-qc">
+  <button class="tab tab-qc active" onclick="switchTab('qc')" id="tab-btn-qc">
     <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
     <span>QC ออกการ์ด</span>
   </button>
-  <button class="tab" onclick="switchTab('prod')" id="tab-btn-prod">
+  <button class="tab tab-prod" onclick="switchTab('prod')" id="tab-btn-prod">
     <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
     <span>Production ตอบกลับ</span>
-    <span class="tab-badge" id="prod-badge">0</span>
   </button>
-  <button class="tab" onclick="switchTab('history')" id="tab-btn-history">
+  <button class="tab tab-replied" onclick="switchTab('replied')" id="tab-btn-replied">
+    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    <span>Production ตอบกลับแล้ว</span>
+  </button>
+  <button class="tab tab-history" onclick="switchTab('history')" id="tab-btn-history">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    <span>ประวัติ</span>
+    <span>ประวัติทั้งหมด</span>
   </button>
 </div>
 
@@ -387,21 +389,40 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 </div>
 
+<!-- ========== PRODUCTION REPLIED TAB ========== -->
+<div id="tab-replied" class="tab-content">
+  <div class="sec-head green" style="margin-bottom:14px;border-radius:var(--radius-lg)">
+    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    <div class="sec-head-text">
+      <h2>Production ตอบกลับแล้ว</h2>
+      <p>แสดงเฉพาะการ์ดที่ Production ดำเนินการและตอบกลับแล้ว</p>
+    </div>
+  </div>
+  <div class="sec-body" style="padding:12px">
+    <div id="replied-list"></div>
+  </div>
+</div>
+
 <!-- ========== HISTORY TAB ========== -->
 <div id="tab-history" class="tab-content">
+  <div class="sec-head" style="margin-bottom:14px;border-radius:var(--radius-lg)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <div class="sec-head-text">
+      <h2>ประวัติทั้งหมด</h2>
+      <p>ดูประวัติการ์ดส้มทั้งหมด และค้นหาตามเงื่อนไข</p>
+    </div>
+  </div>
   <div class="counter-row">
     <div class="counter orange"><div class="num" id="cnt-total">0</div><div class="lbl">การ์ดทั้งหมด</div></div>
     <div class="counter orange"><div class="num" id="cnt-pending">0</div><div class="lbl">รอตอบกลับ</div></div>
-    <div class="counter green"><div class="num" id="cnt-done">0</div><div class="lbl">แก้ไขแล้ว</div></div>
+    <div class="counter green"><div class="num" id="cnt-done">0</div><div class="lbl">ตอบกลับแล้ว</div></div>
   </div>
-
-  <!-- FILTERS -->
   <div class="filter-row">
     <input type="text" id="h-search" placeholder="🔍 ค้นหา DWG / Part / Machine..." oninput="applyFilters()">
     <select id="h-status" onchange="applyFilters()">
       <option value="">สถานะทั้งหมด</option>
-      <option value="pending">⏳ รอตอบกลับ</option>
-      <option value="replied">✅ แก้ไขแล้ว</option>
+      <option value="pending">⏳ รอ Production ตอบกลับ</option>
+      <option value="replied">✅ Production ตอบกลับแล้ว</option>
     </select>
     <span class="filter-label">จากวันที่</span>
     <input type="date" id="h-date-from" title="วันที่เริ่มต้น" onchange="applyFilters()">
@@ -416,7 +437,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       Export Excel
     </button>
   </div>
-
   <div id="history-list"></div>
 </div>
 
@@ -589,14 +609,6 @@ document.addEventListener('change', e => {
 // Load dropdowns on page start
 loadDropdowns();
 
-// โหลดการ์ดตั้งแต่เปิดแอป เพื่ออัปเดต badge และแจ้งเตือนทันที
-loadCards().then(() => {
-  const pendingCount = allCards.filter(c => c.status === 'pending').length;
-  if (pendingCount > 0) {
-    showToast('🔔 มีการ์ดส้มรอตอบกลับ ' + pendingCount + ' ใบ', 'error');
-  }
-});
-
 // ---------- UTILS ----------
 function today() { return new Date().toISOString().slice(0, 10); }
 function nowTime() {
@@ -684,14 +696,6 @@ function getFilteredCards() {
 }
 function save() { try { localStorage.setItem('ng_cards_v3', JSON.stringify(allCards)); } catch(e) {} }
 
-function updateProdBadge() {
-  const count = allCards.filter(c => c.status === 'pending').length;
-  const badge = document.getElementById('prod-badge');
-  if (!badge) return;
-  badge.textContent = count > 99 ? '99+' : count;
-  badge.classList.toggle('show', count > 0);
-}
-
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -719,6 +723,7 @@ function switchTab(t) {
   document.getElementById('tab-btn-' + t).classList.add('active');
   document.getElementById('tab-' + t).classList.add('active');
   if (t === 'prod') { loadCards(); }
+  if (t === 'replied') { loadCards(); }
   if (t === 'history') { loadCards(); }
 }
 
@@ -760,8 +765,10 @@ async function loadCards() {
   const btn = document.getElementById('btn-refresh');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading-spin"></span> กำลังโหลด...'; }
 
-  document.getElementById('history-list').innerHTML = '<div class="load-overlay"><span class="loading-spin"></span><br><br>กำลังโหลดข้อมูลจาก Google Sheets...</div>';
+  document.getElementById('replied-list').innerHTML = '<div class="load-overlay"><span class="loading-spin"></span><br><br>กำลังโหลดข้อมูลจาก Google Sheets...</div>';
   document.getElementById('pending-list').innerHTML = '<div class="load-overlay"><span class="loading-spin"></span><br><br>กำลังโหลด...</div>';
+  document.getElementById('replied-list').innerHTML = '<div class="load-overlay"><span class="loading-spin"></span><br><br>กำลังโหลด...</div>';
+  document.getElementById('history-list').innerHTML = '<div class="load-overlay"><span class="loading-spin"></span><br><br>กำลังโหลด...</div>';
 
   try {
     const url = APPS_SCRIPT_URL + '?action=getCards';
@@ -776,7 +783,8 @@ async function loadCards() {
 
     applyFilters();
     renderPending();
-    updateProdBadge();
+    renderReplied();
+    renderReplied();
 
   } catch(e) {
     console.warn('Load cards error:', e);
@@ -792,7 +800,6 @@ async function loadCards() {
     }
     applyFilters();
     renderPending();
-    updateProdBadge();
   }
 
   if (btn) {
@@ -1264,7 +1271,6 @@ async function submitQC() {
   allCards.unshift(card);
   cards = [...allCards];
   save();
-  updateProdBadge();
   showQCNotify(card);
   showToast('✅ ออกการ์ดส้ม ' + cardId + ' สำเร็จ!', 'success');
 
@@ -1335,17 +1341,28 @@ function renderPending() {
   el.innerHTML = pending.map(c => cardHTML(c, true)).join('');
 }
 
+function renderReplied() {
+  const repliedCards = allCards.filter(c => c.status === 'replied');
+  const el = document.getElementById('replied-list');
+  if (!repliedCards.length) {
+    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>ยังไม่มีรายการที่ Production ตอบกลับแล้ว</div>';
+    return;
+  }
+  el.innerHTML = repliedCards.map(c => cardHTML(c, false)).join('');
+}
+
 function renderHistory() {
   document.getElementById('cnt-total').textContent = allCards.length;
   document.getElementById('cnt-pending').textContent = allCards.filter(c => c.status === 'pending').length;
   document.getElementById('cnt-done').textContent = allCards.filter(c => c.status === 'replied').length;
 
   const el = document.getElementById('history-list');
+  if (!el) return;
   if (!cards.length) {
-    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>ยังไม่มีการ์ดส้ม</div>';
+    el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>ไม่พบข้อมูลตามเงื่อนไข</div>';
     return;
   }
-  el.innerHTML = cards.map(c => cardHTML(c, false)).join('');
+  el.innerHTML = cards.map(c => cardHTML(c, c.status === 'pending')).join('');
 }
 
 // ---------- REPLY ----------
@@ -1395,7 +1412,6 @@ async function submitReply() {
   }
 
   save();
-  updateProdBadge();
   closeModal('reply-modal');
   showToast('✅ บันทึกการตอบกลับสำเร็จ!', 'success');
   applyFilters();
