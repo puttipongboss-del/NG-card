@@ -26,6 +26,9 @@ a{color:var(--orange);text-decoration:none}
 .tab{flex:1;padding:11px 8px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px}
 .tab svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
 .tab.active{color:var(--orange);border-bottom-color:var(--orange);background:var(--orange-light)}
+.tab{position:relative}
+.tab-badge{position:absolute;top:4px;right:10px;background:#E24B4A;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 4px;line-height:1}
+.tab-badge.show{display:flex}
 .tab-content{display:none;padding:16px;max-width:680px;margin:0 auto}
 .tab-content.active{display:block}
 
@@ -209,6 +212,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   <button class="tab" onclick="switchTab('prod')" id="tab-btn-prod">
     <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
     <span>Production ตอบกลับ</span>
+    <span class="tab-badge" id="prod-badge">0</span>
   </button>
   <button class="tab" onclick="switchTab('history')" id="tab-btn-history">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -585,6 +589,14 @@ document.addEventListener('change', e => {
 // Load dropdowns on page start
 loadDropdowns();
 
+// โหลดการ์ดตั้งแต่เปิดแอป เพื่ออัปเดต badge และแจ้งเตือนทันที
+loadCards().then(() => {
+  const pendingCount = allCards.filter(c => c.status === 'pending').length;
+  if (pendingCount > 0) {
+    showToast('🔔 มีการ์ดส้มรอตอบกลับ ' + pendingCount + ' ใบ', 'error');
+  }
+});
+
 // ---------- UTILS ----------
 function today() { return new Date().toISOString().slice(0, 10); }
 function nowTime() {
@@ -672,6 +684,14 @@ function getFilteredCards() {
 }
 function save() { try { localStorage.setItem('ng_cards_v3', JSON.stringify(allCards)); } catch(e) {} }
 
+function updateProdBadge() {
+  const count = allCards.filter(c => c.status === 'pending').length;
+  const badge = document.getElementById('prod-badge');
+  if (!badge) return;
+  badge.textContent = count > 99 ? '99+' : count;
+  badge.classList.toggle('show', count > 0);
+}
+
 function showToast(msg, type = '') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -756,6 +776,7 @@ async function loadCards() {
 
     applyFilters();
     renderPending();
+    updateProdBadge();
 
   } catch(e) {
     console.warn('Load cards error:', e);
@@ -771,6 +792,7 @@ async function loadCards() {
     }
     applyFilters();
     renderPending();
+    updateProdBadge();
   }
 
   if (btn) {
@@ -1242,6 +1264,7 @@ async function submitQC() {
   allCards.unshift(card);
   cards = [...allCards];
   save();
+  updateProdBadge();
   showQCNotify(card);
   showToast('✅ ออกการ์ดส้ม ' + cardId + ' สำเร็จ!', 'success');
 
@@ -1372,6 +1395,7 @@ async function submitReply() {
   }
 
   save();
+  updateProdBadge();
   closeModal('reply-modal');
   showToast('✅ บันทึกการตอบกลับสำเร็จ!', 'success');
   applyFilters();
