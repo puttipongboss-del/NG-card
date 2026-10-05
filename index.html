@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -594,6 +593,8 @@ let cards = [];           // loaded from Sheets
 let allCards = [];        // unfiltered
 let pendingPhotos = [];   // [{file, previewUrl, driveUrl}]
 let dropdownsLoaded = false;
+const DD_CACHE_KEY = 'ng_dropdowns_v1';
+let ddLoading = false;
 let photosPreparing = false;
 let clockTimer = null;
  
@@ -611,8 +612,7 @@ document.addEventListener('change', e => {
 });
  
 // Load dropdowns on page start
-loadDropdowns();
-refreshCardsSilently();
+loadDropdowns().finally(refreshCardsSilently);   // โหลดทีละอย่าง ไม่ยิงพร้อมกัน
 setInterval(refreshCardsSilently, 60000);   // อัปเดตทุก 60 วินาที
  
 // ---------- UTILS ----------
@@ -734,29 +734,60 @@ function switchTab(t) {
 }
  
 // ---------- LOAD DROPDOWNS (from Sheets) ----------
-async function loadDropdowns() {
+function applyDropdowns(data) {
+  populateSelect('q-inspector', data.qcList || [], '— เลือกผู้ตรวจสอบ —');
+  populateSelect('q-receiver',  data.prodList || [], '— เลือกผู้รับแจ้ง —');
+  populateSelect('q-operator',  data.operatorList || [], '— เลือกพนักงาน —');
+  populateSelect('q-machine',   data.machineList || [], '— เลือก Machine —');
+}
+ 
+// โหลดรายชื่อ: ใช้ cache แสดงทันที → ดึงใหม่จาก Sheets → ถ้าพลาดลองซ้ำอัตโนมัติ (สูงสุด 4 ครั้ง)
+async function loadDropdowns(attempt = 1) {
+  if (attempt === 1) {
+    if (ddLoading) return false;
+    ddLoading = true;
+    try {
+      const cached = JSON.parse(localStorage.getItem(DD_CACHE_KEY) || 'null');
+      if (cached) applyDropdowns(cached);
+    } catch (e) {}
+  }
   try {
-    const url = APPS_SCRIPT_URL + '?action=getDropdowns';
-    const res = await fetch(url);
-    const data = await res.json();
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=getDropdowns');
+    const data = JSON.parse(await res.text());
+    if (data.error) throw new Error(data.error);
+    const total = (data.qcList || []).length + (data.prodList || []).length +
+                  (data.operatorList || []).length + (data.machineList || []).length;
+    if (!total) throw new Error('empty dropdown lists');
  
-    if (data.error) { console.warn('Dropdown error:', data.error); return; }
- 
-    populateSelect('q-inspector', data.qcList || [], '— เลือกผู้ตรวจสอบ —');
-    populateSelect('q-receiver',  data.prodList || [], '— เลือกผู้รับแจ้ง —');
-    populateSelect('q-operator',  data.operatorList || [], '— เลือกพนักงาน —');
-    populateSelect('q-machine',   data.machineList || [], '— เลือก Machine —');
- 
+    applyDropdowns(data);
+    try { localStorage.setItem(DD_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
     dropdownsLoaded = true;
-  } catch(e) {
-    console.warn('Cannot load dropdowns:', e);
-    showToast('⚠️ โหลด dropdown ไม่ได้ — ตรวจสอบ Apps Script', 'error');
+    ddLoading = false;
+    return true;
+  } catch (e) {
+    console.warn('loadDropdowns attempt ' + attempt + ' failed:', e);
+    if (attempt < 4) {
+      await new Promise(r => setTimeout(r, attempt * 1500));
+      return loadDropdowns(attempt + 1);
+    }
+    ddLoading = false;
+    if (!dropdownsLoaded) showToast('⚠️ โหลดรายชื่อไม่ได้ — แตะช่องเลือกอีกครั้งเพื่อลองใหม่', 'error');
+    return false;
   }
 }
+ 
+// ถ้าช่องยังว่างอยู่ตอนผู้ใช้แตะ ให้ลองโหลดใหม่
+document.addEventListener('focusin', e => {
+  if (['q-inspector','q-receiver','q-operator','q-machine'].includes(e.target.id) &&
+      e.target.options.length <= 1 && !ddLoading) {
+    loadDropdowns();
+  }
+});
  
 function populateSelect(id, items, placeholder) {
   const sel = document.getElementById(id);
   if (!sel) return;
+  const prev = sel.value;
   sel.innerHTML = `<option value="">${placeholder}</option>`;
   items.forEach(name => {
     const opt = document.createElement('option');
@@ -764,6 +795,7 @@ function populateSelect(id, items, placeholder) {
     opt.textContent = name;
     sel.appendChild(opt);
   });
+  if (prev && items.includes(prev)) sel.value = prev;
 }
  
 // ---------- LOAD CARDS (from Sheets) ----------
