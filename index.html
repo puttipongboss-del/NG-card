@@ -480,7 +480,9 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="form-row">
         <div class="form-group">
           <label>ผู้แก้ไขชิ้นงาน <span class="req">*</span></label>
-          <input type="text" id="r-fixer" placeholder="ชื่อผู้แก้ไข">
+          <select id="r-fixer" required>
+            <option value="">— เลือกผู้แก้ไข —</option>
+          </select>
         </div>
         <div class="form-group">
           <label>วันที่แก้ไข</label>
@@ -513,7 +515,9 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <div class="form-row">
         <div class="form-group">
           <label>ผู้ตรวจสอบซ้ำ (QC)</label>
-          <input type="text" id="r-recheck" placeholder="ชื่อผู้ตรวจ">
+          <select id="r-recheck">
+            <option value="">— เลือกผู้ตรวจสอบซ้ำ —</option>
+          </select>
         </div>
         <div class="form-group">
           <label>วันที่ตรวจซ้ำ</label>
@@ -739,6 +743,10 @@ function applyDropdowns(data) {
   populateSelect('q-receiver',  data.prodList || [], '— เลือกผู้รับแจ้ง —');
   populateSelect('q-operator',  data.operatorList || [], '— เลือกพนักงาน —');
   populateSelect('q-machine',   data.machineList || [], '— เลือก Machine —');
+
+  // ใช้รายชื่อชุดเดียวกับช่อง "ผู้รับแจ้ง (Production)"
+  populateSelect('r-fixer',   data.prodList || [], '— เลือกผู้แก้ไข —');
+  populateSelect('r-recheck', data.prodList || [], '— เลือกผู้ตรวจสอบซ้ำ —');
 }
  
 // โหลดรายชื่อ: ใช้ cache แสดงทันที → ดึงใหม่จาก Sheets → ถ้าพลาดลองซ้ำอัตโนมัติ (สูงสุด 4 ครั้ง)
@@ -778,7 +786,7 @@ async function loadDropdowns(attempt = 1) {
  
 // ถ้าช่องยังว่างอยู่ตอนผู้ใช้แตะ ให้ลองโหลดใหม่
 document.addEventListener('focusin', e => {
-  if (['q-inspector','q-receiver','q-operator','q-machine'].includes(e.target.id) &&
+  if (['q-inspector','q-receiver','q-operator','q-machine','r-fixer','r-recheck'].includes(e.target.id) &&
       e.target.options.length <= 1 && !ddLoading) {
     loadDropdowns();
   }
